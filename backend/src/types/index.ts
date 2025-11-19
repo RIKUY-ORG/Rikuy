@@ -21,10 +21,17 @@ export interface CreateReportRequest {
 export interface CreateReportResponse {
   success: boolean;
   reportId: string;
-  arkivTxId: string;
-  scrollTxHash: string;
-  estimatedReward: string;
-  message: string;
+  status: 'procesando' | 'confirmado' | 'validado' | 'resuelto';
+  recompensa: {
+    puntos: number;
+    mensaje: string;
+  };
+  mensaje: string;
+  // Campos internos (no exponer al frontend, solo para logging)
+  _internal?: {
+    arkivTxId: string;
+    scrollTxHash: string;
+  };
 }
 
 export interface ArkivReportData {
@@ -75,9 +82,20 @@ export interface NearbyReportsQuery {
 
 export interface ReportStatus {
   reportId: string;
-  status: 'pending' | 'verified' | 'disputed' | 'resolved';
-  upvotes: number;
-  downvotes: number;
-  isVerified: boolean;
-  arkivData?: ArkivReportData;
+  estado: 'procesando' | 'confirmado' | 'validado' | 'resuelto';
+  validaciones: {
+    positivas: number;
+    negativas: number;
+    confiabilidad: number; // 0-100%
+  };
+  verificado: boolean;
+  resuelto: boolean;
+  recompensaGanada?: number; // En puntos
+  datosReporte?: ArkivReportData;
+  // Campos internos
+  _internal?: {
+    blockchainStatus: number;
+    upvotes: number;
+    downvotes: number;
+  };
 }

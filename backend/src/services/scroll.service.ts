@@ -42,7 +42,10 @@ class ScrollService {
       console.log(`[Scroll] Creating report on-chain...`);
 
       // Convertir arkivTxId a bytes32
-      const arkivTxIdBytes = ethers.id(arkivTxId); // keccak256
+      // arkivTxId ya es un hash SHA-256 hex, solo necesitamos agregar 0x
+      const arkivTxIdBytes = arkivTxId.startsWith('0x')
+        ? arkivTxId
+        : `0x${arkivTxId}`;
 
       // Mock ZK proof (8 elementos)
       // En producción, esto viene del ZK prover
@@ -105,7 +108,10 @@ class ScrollService {
     try {
       console.log(`[Scroll] Validating report ${reportId}: ${isValid}`);
 
-      const reportIdBytes = ethers.id(reportId);
+      // reportId ya es un hash SHA-256 hex, solo necesitamos agregar 0x
+      const reportIdBytes = reportId.startsWith('0x')
+        ? reportId
+        : `0x${reportId}`;
 
       const tx = await this.contract.validateReport(reportIdBytes, isValid);
       const receipt = await tx.wait();
@@ -131,7 +137,10 @@ class ScrollService {
     isResolved: boolean;
   }> {
     try {
-      const reportIdBytes = ethers.id(reportId);
+      // reportId ya es un hash SHA-256 hex, solo necesitamos agregar 0x
+      const reportIdBytes = reportId.startsWith('0x')
+        ? reportId
+        : `0x${reportId}`;
 
       const result = await this.contract.getReportStatus(reportIdBytes);
 

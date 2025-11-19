@@ -61,67 +61,9 @@ router.post(
 );
 
 /**
- * GET /api/reports/:id
- * Obtener reporte por ID
- */
-router.get('/:id', async (req: Request, res: Response) => {
-  try {
-    const report = await reportService.getReport(req.params.id);
-
-    if (!report.data) {
-      return res.status(404).json({
-        success: false,
-        error: 'Reporte no encontrado',
-      });
-    }
-
-    res.json({
-      success: true,
-      data: report,
-    });
-
-  } catch (error: any) {
-    console.error('[API] Get report error:', error);
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
-
-/**
- * POST /api/reports/:id/validate
- * Validar (votar) un reporte
- */
-router.post(
-  '/:id/validate',
-  validate(schemas.validateReport),
-  async (req: Request, res: Response) => {
-    try {
-      const txHash = await scrollService.validateReport(
-        req.params.id,
-        req.body.isValid
-      );
-
-      res.json({
-        success: true,
-        message: 'Validación registrada',
-        txHash,
-      });
-
-    } catch (error: any) {
-      console.error('[API] Validate report error:', error);
-      res.status(500).json({
-        success: false,
-        error: error.message,
-      });
-    }
-  }
-);
-
-/**
  * GET /api/reports/nearby
  * Buscar reportes cercanos
+ * IMPORTANTE: Esta ruta debe estar ANTES de /:id para que funcione correctamente
  */
 router.get('/nearby', async (req: Request, res: Response) => {
   try {
@@ -151,9 +93,74 @@ router.get('/nearby', async (req: Request, res: Response) => {
     console.error('[API] Nearby reports error:', error);
     res.status(400).json({
       success: false,
-      error: error.message,
+      error: 'No pudimos buscar reportes cercanos. Verifica tu ubicación e intenta de nuevo.',
     });
   }
 });
+
+/**
+ * GET /api/reports/:id
+ * Obtener reporte por ID
+ */
+router.get('/:id', async (req: Request, res: Response) => {
+  try {
+    const report = await reportService.getReport(req.params.id);
+
+    if (!report.datosReporte) {
+      return res.status(404).json({
+        success: false,
+        error: 'No encontramos ese reporte. Verifica el ID e intenta de nuevo.',
+      });
+    }
+
+    res.json({
+      success: true,
+      reporte: report,
+    });
+
+  } catch (error: any) {
+    console.error('[API] Get report error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'No pudimos obtener el reporte. Por favor intenta de nuevo.',
+    });
+  }
+});
+
+/**
+ * POST /api/reports/:id/validate
+ * Validar (votar) un reporte
+ */
+router.post(
+  '/:id/validate',
+  validate(schemas.validateReport),
+  async (req: Request, res: Response) => {
+    try {
+      const txHash = await scrollService.validateReport(
+        req.params.id,
+        req.body.isValid
+      );
+
+      // Respuesta user-friendly sin exponer blockchain
+      res.json({
+        success: true,
+        mensaje: req.body.isValid
+          ? '¡Gracias por validar este reporte! Tu voto ha sido registrado.'
+          : 'Tu voto ha sido registrado. Ayudas a mantener la calidad de la comunidad.',
+        // Datos técnicos ocultos
+        _internal: {
+          txHash,
+        },
+      });
+
+    } catch (error: any) {
+      console.error('[API] Validate report error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'No pudimos registrar tu validación. Por favor intenta de nuevo.',
+      });
+    }
+  }
+);
 
 export default router;

@@ -1,4 +1,4 @@
-import { CreateReportRequest, CreateReportResponse, ReportCategory, ArkivReportData } from '../types';
+import { CreateReportRequest, CreateReportResponse, ReportCategory, ArkivReportData, ReportStatus } from '../types';
 import { ipfsService } from './ipfs.service';
 import { aiService } from './ai.service';
 import { arkivService } from './arkiv.service';
@@ -103,13 +103,21 @@ class ReportService {
 
       console.log('[Report] ✅ Report created successfully!');
 
+      // Respuesta user-friendly (sin exponer blockchain)
       return {
         success: true,
         reportId: onChainId,
-        arkivTxId,
-        scrollTxHash: txHash,
-        estimatedReward: `$${estimatedReward}`,
-        message: 'Reporte creado exitosamente. Recibirás tu recompensa cuando sea verificado.',
+        status: 'confirmado' as const,
+        recompensa: {
+          puntos: estimatedReward,
+          mensaje: `Podrás ganar hasta ${estimatedReward} puntos cuando tu reporte sea validado por la comunidad`,
+        },
+        mensaje: '¡Reporte creado exitosamente! Está siendo procesado por la comunidad.',
+        // Datos técnicos (solo para logging interno)
+        _internal: {
+          arkivTxId,
+          scrollTxHash: txHash,
+        },
       };
 
     } catch (error: any) {
@@ -120,17 +128,50 @@ class ReportService {
 
   /**
    * Obtener reporte completo (blockchain + Arkiv)
+   * Devuelve datos user-friendly sin exponer blockchain
    */
-  async getReport(reportId: string) {
+  async getReport(reportId: string): Promise<ReportStatus> {
     const [onChainData, arkivData] = await Promise.all([
       scrollService.getReportStatus(reportId),
       arkivService.getReport(reportId),
     ]);
 
+    // Calcular confiabilidad (0-100%)
+    const totalVotes = onChainData.upvotes + onChainData.downvotes;
+    const confiabilidad = totalVotes > 0
+      ? Math.round((onChainData.upvotes / totalVotes) * 100)
+      : 50; // 50% por defecto si no hay votos
+
+    // Mapear estado de blockchain a estado user-friendly
+    const estado = this.mapBlockchainStatus(
+      onChainData.status,
+      onChainData.isVerified,
+      onChainData.isResolved
+    );
+
+    // Calcular recompensa ganada si está verificado
+    const recompensaGanada = onChainData.isVerified && arkivData
+      ? this.calculateEstimatedReward(arkivData.category.id, 7) // Usar severidad promedio
+      : undefined;
+
     return {
       reportId,
-      blockchain: onChainData,
-      data: arkivData,
+      estado,
+      validaciones: {
+        positivas: onChainData.upvotes,
+        negativas: onChainData.downvotes,
+        confiabilidad,
+      },
+      verificado: onChainData.isVerified,
+      resuelto: onChainData.isResolved,
+      recompensaGanada,
+      datosReporte: arkivData || undefined,
+      // Datos internos
+      _internal: {
+        blockchainStatus: onChainData.status,
+        upvotes: onChainData.upvotes,
+        downvotes: onChainData.downvotes,
+      },
     };
   }
 
@@ -195,6 +236,26 @@ class ReportService {
     const base = baseRewards[category];
     const multiplier = severity / 10; // 0.1 a 1.0
     return Math.round(base * (0.5 + multiplier * 0.5)); // 50% a 100% del base
+  }
+
+  /**
+   * Mapear estado de blockchain a estado user-friendly
+   * Estados blockchain:
+   * 0 = Pending
+   * 1 = Verified
+   * 2 = Disputed
+   * 3 = Resolved
+   */
+  private mapBlockchainStatus(
+    status: number,
+    isVerified: boolean,
+    isResolved: boolean
+  ): 'procesando' | 'confirmado' | 'validado' | 'resuelto' {
+    if (isResolved) return 'resuelto';
+    if (isVerified) return 'validado';
+    if (status === 1) return 'validado';
+    if (status === 0) return 'confirmado';
+    return 'procesando';
   }
 }
 
