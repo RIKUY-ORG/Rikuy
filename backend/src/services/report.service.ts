@@ -1,0 +1,201 @@
+import { CreateReportRequest, CreateReportResponse, ReportCategory, ArkivReportData } from '../types';
+import { ipfsService } from './ipfs.service';
+import { aiService } from './ai.service';
+import { arkivService } from './arkiv.service';
+import { scrollService } from './scroll.service';
+import crypto from 'crypto';
+
+/**
+ * Servicio principal de reportes (orquesta todos los demás)
+ */
+class ReportService {
+
+  /**
+   * FLUJO COMPLETO: Crear reporte end-to-end
+   *
+   * 1. Upload foto a IPFS
+   * 2. IA genera descripción
+   * 3. Guardar todo en Arkiv (inmutable)
+   * 4. Crear reporte en Scroll (blockchain)
+   * 5. Retornar resultado al usuario
+   */
+  async createReport(request: CreateReportRequest): Promise<CreateReportResponse> {
+    try {
+      console.log('[Report] Starting report creation flow...');
+
+      // Validar ubicación (Argentina only)
+      this.validateLocation(request.location);
+
+      // PASO 1: Subir foto a IPFS
+      console.log('[Report] Step 1: Uploading to IPFS...');
+      const { ipfsHash, url: imageUrl, fileHash } = await ipfsService.uploadImage(request.photo);
+
+      // Check duplicate
+      const isDuplicate = await ipfsService.checkDuplicate(fileHash);
+      if (isDuplicate) {
+        throw new Error('Esta foto ya fue reportada anteriormente');
+      }
+
+      // PASO 2: IA analiza la imagen
+      console.log('[Report] Step 2: AI analyzing image...');
+      const aiAnalysis = await aiService.analyzeImage(imageUrl, request.category);
+
+      // Moderation check
+      const isAppropriate = await aiService.moderateImage(imageUrl);
+      if (!isAppropriate) {
+        throw new Error('La imagen no cumple con los estándares de contenido');
+      }
+
+      // Usar descripción de IA si no hay manual
+      const description = request.description || aiAnalysis.description;
+
+      // PASO 3: Generar ID del reporte
+      const reportId = this.generateReportId(fileHash, request.location);
+
+      // PASO 4: Guardar en Arkiv (inmutable)
+      console.log('[Report] Step 3: Storing in Arkiv...');
+      const arkivData: ArkivReportData = {
+        protocol: 'rikuy-v1',
+        version: '1.0.0',
+        timestamp: Date.now(),
+        reportId,
+        category: {
+          id: request.category,
+          name: this.getCategoryName(request.category),
+        },
+        evidence: {
+          imageIPFS: ipfsHash,
+          imageHash: fileHash,
+          description,
+          aiGenerated: !request.description,
+          aiTags: aiAnalysis.tags,
+        },
+        location: {
+          approximate: {
+            lat: this.roundCoordinate(request.location.lat),
+            long: this.roundCoordinate(request.location.long),
+            precision: '~100m',
+          },
+          zkProof: request.userSecret ? {
+            nullifier: this.generateNullifier(request.userSecret),
+            verified: true,
+          } : undefined,
+        },
+        metadata: {
+          deviceHash: this.generateDeviceHash(request),
+          timestamp: Date.now(),
+        },
+      };
+
+      const arkivTxId = await arkivService.storeReport(arkivData);
+
+      // PASO 5: Crear en blockchain (Scroll)
+      console.log('[Report] Step 4: Creating on Scroll...');
+      const mockZKProof = [0, 0, 0, 0, 0, 0, 0, 0]; // TODO: Generar proof real
+      const { txHash, reportId: onChainId } = await scrollService.createReport(
+        arkivTxId,
+        request.category,
+        mockZKProof
+      );
+
+      // PASO 6: Calcular recompensa estimada
+      const estimatedReward = this.calculateEstimatedReward(request.category, aiAnalysis.severity);
+
+      console.log('[Report] ✅ Report created successfully!');
+
+      return {
+        success: true,
+        reportId: onChainId,
+        arkivTxId,
+        scrollTxHash: txHash,
+        estimatedReward: `$${estimatedReward}`,
+        message: 'Reporte creado exitosamente. Recibirás tu recompensa cuando sea verificado.',
+      };
+
+    } catch (error: any) {
+      console.error('[Report] Creation failed:', error);
+      throw new Error(error.message || 'Failed to create report');
+    }
+  }
+
+  /**
+   * Obtener reporte completo (blockchain + Arkiv)
+   */
+  async getReport(reportId: string) {
+    const [onChainData, arkivData] = await Promise.all([
+      scrollService.getReportStatus(reportId),
+      arkivService.getReport(reportId),
+    ]);
+
+    return {
+      reportId,
+      blockchain: onChainData,
+      data: arkivData,
+    };
+  }
+
+  /**
+   * Buscar reportes cercanos
+   */
+  async getNearbyReports(lat: number, long: number, radiusKm: number, category?: ReportCategory) {
+    return arkivService.getNearbyReports(lat, long, radiusKm);
+  }
+
+  // ================== UTILIDADES ==================
+
+  private validateLocation(location: { lat: number; long: number }) {
+    const { latMin, latMax, longMin, longMax } = require('../config').config.geofence;
+
+    if (
+      location.lat < latMin ||
+      location.lat > latMax ||
+      location.long < longMin ||
+      location.long > longMax
+    ) {
+      throw new Error('Ubicación fuera de Argentina');
+    }
+  }
+
+  private generateReportId(fileHash: string, location: { lat: number; long: number }): string {
+    const data = `${fileHash}-${location.lat}-${location.long}-${Date.now()}`;
+    return crypto.createHash('sha256').update(data).digest('hex');
+  }
+
+  private generateNullifier(userSecret: string): string {
+    return crypto.createHash('sha256').update(userSecret).digest('hex');
+  }
+
+  private generateDeviceHash(request: CreateReportRequest): string {
+    // Hash simple basado en características del request
+    const data = `${request.location.accuracy}-${request.photo.size}`;
+    return crypto.createHash('md5').update(data).digest('hex');
+  }
+
+  private roundCoordinate(coord: number): number {
+    // Redondear a 2 decimales (~1km precisión)
+    return Math.round(coord * 100) / 100;
+  }
+
+  private getCategoryName(category: ReportCategory): string {
+    const names = {
+      [ReportCategory.INFRAESTRUCTURA]: 'Infraestructura',
+      [ReportCategory.INSEGURIDAD]: 'Inseguridad',
+      [ReportCategory.BASURA]: 'Basura',
+    };
+    return names[category];
+  }
+
+  private calculateEstimatedReward(category: ReportCategory, severity: number): number {
+    const baseRewards = {
+      [ReportCategory.INFRAESTRUCTURA]: 3000,
+      [ReportCategory.INSEGURIDAD]: 5000,
+      [ReportCategory.BASURA]: 2000,
+    };
+
+    const base = baseRewards[category];
+    const multiplier = severity / 10; // 0.1 a 1.0
+    return Math.round(base * (0.5 + multiplier * 0.5)); // 50% a 100% del base
+  }
+}
+
+export const reportService = new ReportService();
