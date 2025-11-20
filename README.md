@@ -8,9 +8,7 @@
 [![Arkiv](https://img.shields.io/badge/Arkiv-Mendoza-blue)](https://arkiv.network/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-🎯 **Estado**: ✅ Sistema 100% funcional - Listo para demo
 📍 **Deployment**: Scroll Sepolia + Arkiv Mendoza
-📖 **Documentación técnica**: [AUDITORIA-COMPLETA.md](./AUDITORIA-COMPLETA.md)
 
 ---
 
@@ -159,10 +157,10 @@ Juan llega de trabajar. Frente a su casa, ve a **Los Halcones** (pandilla local)
 
 💰 RECOMPENSAS (automático vía smart contract)
 
-    Juan recibe:  $140 USD en USX (anónimo, a su wallet)
-    6 validadores: $10 USD c/u
+    Juan recibe:  $2 USD en USX (anónimo, a su wallet)
+    6 validadores: $0.5 USD c/u
 
-    Total distribuido: $200 USD
+    Total distribuido: $2.5 USD
 
     Juan nunca dio su nombre.
     Juan nunca reveló su ubicación exacta.
@@ -323,7 +321,7 @@ Denunciar = 100% riesgo, 0% beneficio
 → Nadie denuncia
 
 RIKUY:
-Denunciar = 0% riesgo (anónimo), 100% beneficio ($100-200 USD)
+Denunciar = 0% riesgo (anónimo), 100% beneficio ($2-$3 USD)
 → Todos denuncian
 → Avalancha de información
 → Crimen organizado colapsa
@@ -824,11 +822,7 @@ Nuestro objetivo es convertir RIKUY en **la infraestructura cívica de Latinoam�
 
 ### 🎯 **Roadmap 2025-2026**
 
-#### **Q1 2025: Piloto en Bolivia** 🇧🇴
-- ✅ **Contactos políticos confirmados:**
-  - Concejal de El Alto (reunión 15 enero)
-  - Diputado de La Paz (alianza estratégica)
-  - ONG "Ciudadanos por la Paz" (co-marketing)
+#### **Q3 2026: Piloto en Bolivia** 🇧🇴
 
 - 🎯 **Objetivos:**
   - Deploy en **Villa Adela + Villa Dolores** (2 barrios críticos)
@@ -844,7 +838,7 @@ Nuestro objetivo es convertir RIKUY en **la infraestructura cívica de Latinoam�
 
 ---
 
-#### **Q2 2025: Expansión Bolivia**
+#### **Q2 2026: Expansión Bolivia**
 - 🎯 **3 ciudades:** La Paz, Cochabamba, Santa Cruz
 - 🎯 **5,000 usuarios activos**
 - 🎯 **Primer contrato gobierno:** Ministerio del Interior ($20K/mes)
@@ -853,7 +847,7 @@ Nuestro objetivo es convertir RIKUY en **la infraestructura cívica de Latinoam�
 
 ---
 
-#### **Q3 2025: Internacionalización**
+#### **Q1 2027: Internacionalización**
 - 🎯 **Países:** Argentina, Perú, Colombia
 - 🎯 **25,000 usuarios**
 - 🎯 **10 clientes B2B** ($500K MRR)
@@ -863,7 +857,7 @@ Nuestro objetivo es convertir RIKUY en **la infraestructura cívica de Latinoam�
 
 ---
 
-#### **Q4 2025: Consolidación**
+#### **Q2 2027: Consolidación**
 - 🎯 **50,000+ usuarios activos**
 - 🎯 **15 ciudades** operativas
 - 🎯 **$2M+ MRR** (revenue mensual recurrente)
@@ -882,38 +876,6 @@ Nuestro objetivo es convertir RIKUY en **la infraestructura cívica de Latinoam�
 
 ---
 
-### 🤝 **Traction Real (Compromisos Actuales)**
-
-No estamos solo soñando. **Ya tenemos tracción política real:**
-
-#### ✅ **Bolivia - Confirmado**
-- **Concejal Juan Pablo Mamani** (El Alto)
-  - Reunión: 15 enero 2025
-  - Agenda: Piloto en Villa Adela
-  - Presupuesto propuesto: $25K para recompensas
-
-- **Diputado Carlos Alarcón** (La Paz)
-  - Llamada inicial: Diciembre 2024
-  - Interés: API de analytics para Comisión de Seguridad
-  - Quote: *"Esto es exactamente lo que necesitamos. El 911 no funciona porque está infiltrado."*
-
-- **ONG Ciudadanos por la Paz**
-  - Alianza firmada (MOU)
-  - Co-funding: $15K
-  - Marketing conjunto
-  - Acceso a red de 2,000 voluntarios
-
-#### 🎯 **Argentina - En Conversación**
-- **Gobierno de Rosario** (ciudad con crisis de narcos)
-  - Contact: Secretario de Seguridad
-  - Demo programada: Febrero 2025
-
-#### 🎯 **Perú - Prospecto**
-- **Alcaldía de Villa El Salvador** (Lima)
-  - Introducción vía ONG local
-  - Interés en piloto Q2 2025
-
----
 
 ### 🌟 **Impacto Social Proyectado**
 
@@ -992,34 +954,6 @@ Endpoints:
 **IPFS**: ✅ Connected (Pinata)
 **GPT-4**: ✅ Connected (OpenAI)
 
----
-
-### **Setup para Desarrolladores**
-
-```bash
-# 1. Clonar
-git clone https://github.com/tu-org/rikuy
-cd rikuy
-
-# 2. Contratos
-forge install
-forge build
-
-# 3. Backend
-cd backend
-npm install
-cp .env.example .env
-# Editar .env con API keys
-
-# 4. Run
-npm run dev
-
-# Backend corre en http://localhost:3001
-```
-
-**Docs completas**: [AUDITORIA-COMPLETA.md](./AUDITORIA-COMPLETA.md)
-
----
 
 ## 🙏 Powered By
 
@@ -1035,15 +969,6 @@ npm run dev
 ## 📄 Licencia
 
 MIT License - Ver [LICENSE](LICENSE)
-
----
-
-## 📞 Contacto
-
-- **Twitter**: @RikuyApp (próximamente)
-- **Email**: contact@rikuy.io
-- **Telegram**: @rikuy_official
-- **GitHub**: [github.com/rikuy-app/rikuy](https://github.com/rikuy-app/rikuy)
 
 ---
 
