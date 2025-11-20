@@ -8,9 +8,7 @@
 [![Arkiv](https://img.shields.io/badge/Arkiv-Mendoza-blue)](https://arkiv.network/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-🎯 **Estado**: ✅ Sistema 100% funcional - Listo para demo
 📍 **Deployment**: Scroll Sepolia + Arkiv Mendoza
-📖 **Documentación técnica**: [AUDITORIA-COMPLETA.md](./AUDITORIA-COMPLETA.md)
 
 ---
 
