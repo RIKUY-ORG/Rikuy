@@ -2,8 +2,7 @@
 pragma solidity ^0.8.23;
 
 interface ITreasury {
-    /**
-     * @notice Liberar recompensas en USX a reporter y validadores
+    /** Liberar recompensas en USX a reporter y validadores
      */
     function releaseRewards(
         bytes32 _reportId,
