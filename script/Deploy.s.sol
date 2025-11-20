@@ -103,12 +103,25 @@ contract DeployScript is Script {
         }
 
         // ==================================
-        // PASO 1: ReportRegistry
+        // PASO 1: ReportRegistry (con Proxy)
         // ==================================
         console.log("\n1. Deploying ReportRegistry...");
-        reportRegistry = new ReportRegistry();
-        reportRegistry.initialize(deployer);
-        console.log("   ReportRegistry:", address(reportRegistry));
+
+        // Deploy implementation
+        ReportRegistry registryImpl = new ReportRegistry();
+        console.log("   ReportRegistry Implementation:", address(registryImpl));
+
+        // Deploy proxy y inicializar
+        bytes memory registryInitData = abi.encodeWithSelector(
+            ReportRegistry.initialize.selector,
+            deployer
+        );
+        ERC1967Proxy registryProxy = new ERC1967Proxy(
+            address(registryImpl),
+            registryInitData
+        );
+        reportRegistry = ReportRegistry(address(registryProxy));
+        console.log("   ReportRegistry Proxy:", address(reportRegistry));
 
         // ==================================
         // PASO 2: MockZKVerifier

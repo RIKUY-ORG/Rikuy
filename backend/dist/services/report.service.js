@@ -109,7 +109,30 @@ class ReportService {
         }
         catch (error) {
             console.error('[Report] Creation failed:', error);
-            throw new Error(error.message || 'Failed to create report');
+            // Mensajes de error user-friendly
+            if (error.message.includes('Ubicación fuera de Argentina')) {
+                throw new Error('Solo aceptamos reportes dentro de Argentina');
+            }
+            if (error.message.includes('ya fue reportada')) {
+                throw new Error('Esta foto ya fue reportada anteriormente');
+            }
+            if (error.message.includes('no cumple con los estándares')) {
+                throw new Error('La imagen no cumple con nuestros estándares de contenido');
+            }
+            if (error.message.includes('IPFS') || error.message.includes('upload')) {
+                throw new Error('No pudimos procesar tu foto. Por favor intenta de nuevo');
+            }
+            if (error.message.includes('IA') || error.message.includes('AI')) {
+                throw new Error('No pudimos analizar tu foto. Por favor intenta de nuevo');
+            }
+            if (error.message.includes('Arkiv') || error.message.includes('storage')) {
+                throw new Error('No pudimos guardar tu reporte. Por favor intenta de nuevo');
+            }
+            if (error.message.includes('blockchain') || error.message.includes('transaction')) {
+                throw new Error('No pudimos confirmar tu reporte. Por favor intenta de nuevo');
+            }
+            // Error genérico
+            throw new Error('Hubo un problema al crear tu reporte. Por favor intenta de nuevo');
         }
     }
     /**

@@ -20,8 +20,6 @@ contract MockUSX is ERC20, Ownable {
      * @notice Constructor - Crea token mock con supply para testing
      */
     constructor() ERC20("USD Exchange", "USX") Ownable(msg.sender) {
-        // Mintear 10M USX para el deployer (gobierno inicial)
-        // 10M USX = $10M USD para fondear el Treasury
         _mint(msg.sender, 10_000_000 * 1e18);
     }
 
