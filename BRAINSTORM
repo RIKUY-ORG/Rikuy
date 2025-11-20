@@ -1,0 +1,104 @@
+# Rikuy overview brainstorm
+
+## Overview
+Rikuy es una plataforma real y accesible para denunciar actividades antisociales y casos de corrupción de forma anónima, trazable y transparente. Nace desde la experiencia de Bolivia y Latinoamérica y se apoya en blockchain para garantizar inmutabilidad y confianza, manteniendo una interfaz simple que se siente como cualquier app cotidiana.
+
+---
+
+## Contexto y problema
+La corrupción y el encubrimiento de casos por parte de actores de poder han erosionado la confianza en los canales de denuncia tradicionales. La ciudadanía enfrenta represalias, invisibilización y miedo, lo que perpetúa la impunidad. Rikuy busca romper ese ciclo con anonimidad robusta, trazabilidad verificable y un puente directo entre comunidad y autoridades.
+
+---
+
+## Concepto y principios
+Rikuy significa “vigilante” en quechua. La plataforma empodera a la comunidad para observar, registrar y escalar evidencias de forma segura y responsable.
+
+- **Anonimidad:** Protección por defecto, sin exponer identidad ni metadatos sensibles.  
+- **Trazabilidad:** Registro verificable de eventos, estados y acciones.  
+- **Transparencia:** Reglas y flujos auditables por la comunidad y autoridades.  
+- **Accesibilidad:** Interfaz clara y familiar para todas las edades; tecnología invisible.  
+
+---
+
+## Por qué blockchain y qué resuelve
+Blockchain es la capa de registro inmutable que asegura que las denuncias no se alteren ni se borren, y que sus estados sean verificables por terceros. Aporta libertad y anonimato como filosofía tecnológica, sin obligar al usuario a entender o interactuar con lo técnico.
+
+- **Inmutabilidad:** Denuncias y cambios de estado quedan sellados.  
+- **Verificabilidad:** Terceros pueden auditar sin exponer identidad.  
+- **Descentralización:** Reduce la posibilidad de censura y manipulación.  
+- **Diseño centrado en el usuario:** La experiencia parece una app común; la complejidad queda detrás.  
+
+---
+
+## Evolución de la idea y modalidades de captura
+La idea fue iterando en varias fases, siempre con foco en accesibilidad y seguridad:
+
+1. **Fotos rápidas:** Captura inmediata de situaciones cotidianas.  
+2. **Videos cortos:** Contexto visual dinámico cuando la foto no alcanza.  
+3. **Audios:** Denuncias sensibles, especialmente desde altas esferas de poder.  
+4. **Recompensas condicionadas:** Incentivar impacto real, con filtros de IA y comunidad.  
+5. **Comunidades tipo Discord:** Espacios descentralizados por barrios, ciudades o instituciones. Los usuarios pueden moverse de comunidad si se mudan, manteniendo su historial.  
+6. **Login con Google + wallet invisible:** Botón de “Iniciar sesión con Google” que crea automáticamente una wallet en segundo plano (ej. Stellar, Polygon, Near). El usuario no necesita recordar claves privadas; basta con volver a iniciar sesión. Inspirado en Meru, ocultando la complejidad blockchain.  
+
+---
+
+## Flujo del usuario y experiencia accesible
+- **Inicio simple:** Botón claro para denunciar; opciones foto, video corto o audio.  
+- **Guía paso a paso:** Indicaciones breves, lenguaje llano y ejemplos visuales.  
+- **Anonimidad por defecto:** Purgado de metadatos; seudonimización automática.  
+- **Confirmación transparente:** Identificador público, estado y trazabilidad visible.  
+- **Participación comunitaria:** Votación sencilla para priorizar casos.  
+- **Accesibilidad universal:** Tipografías legibles, alto contraste, iconografía clara y soporte multilenguaje.  
+- **Comunidades dinámicas:** El usuario puede elegir o cambiar de comunidad como en Discord, manteniendo continuidad.  
+- **Login simplificado:** “Iniciar sesión con Google” que gestiona la wallet invisible, sin claves ni fricción.  
+
+---
+
+## Gobernanza, filtros y recompensas
+- **Filtro de IA:** Detecta duplicados y patrones de abuso.  
+- **Filtro comunitario:** Votación abierta para decidir qué casos se escalan a autoridades.  
+- **Sistema de recompensas:** Reconocimiento cuando un caso contribuye a resolver otro mayor o llega a conclusión verificable.  
+
+---
+
+## Arquitectura conceptual y trazabilidad
+Se usará un stack moderno y escalable:
+
+- **Frontend:** Next.js para interfaz accesible y modular.  
+- **Backend:** Arkiv y Scroll para trazabilidad y registro blockchain.  
+- **Dashboard:** privi.io para panel institucional y visualización de casos.  
+- **Autenticación:** OAuth 2.0 con Google + wallet invisible (custodia segura).  
+- **Capa de gobernanza:** Smart contracts para votación y recompensas.  
+
+---
+
+## Stakeholders, valor y casos de uso
+- **Ciudadanía:** Canal seguro para denunciar sin miedo; poder de priorizar.  
+- **Autoridades:** Casos trazables y validados socialmente; mayor eficiencia y legitimidad.  
+- **Periodistas y ONGs:** Información auditable para seguimiento y presión pública.  
+- **Academia y hackathons:** Modelo replicable y medible para innovación cívica.  
+
+Casos de uso: denuncias anónimas en barrios, documentación de corrupción, evidencia de abuso de poder, seguimiento comunitario.
+
+---
+
+## Riesgos, mitigaciones y ética
+- **Denuncias falsas:** IA + revisión comunitaria + trazabilidad verificable.  
+- **Revelación involuntaria de identidad:** Purgado de metadatos, guías de captura, controles de acceso.  
+- **Manipulación o censura:** Registro inmutable y gobernanza distribuida.  
+- **Exposición de víctimas:** Ofuscación y canalización adecuada a autoridades.  
+- **Ética:** Información clara, procesos auditables y priorización del bienestar comunitario.  
+
+---
+
+## Métricas de éxito y roadmap del MVP
+- **Adopción:** Denuncias válidas registradas, usuarios activos, diversidad etaria.  
+- **Calidad:** Ratio de duplicados detectados, tiempo de priorización y escalamiento.  
+- **Impacto:** Casos que derivan en acciones oficiales o resoluciones.  
+- **Confianza:** Encuestas de percepción de seguridad y usabilidad.   
+
+---
+
+## Resumen para pitch
+Rikuy es una plataforma de denuncias anónimas, trazables y transparentes, pensada para que cualquier persona —desde un infante hasta un adulto mayor— pueda usarla sin complicaciones. Con blockchain como garante de inmutabilidad y confianza, filtros de IA y votación comunitaria, prioriza los casos con mayor relevancia social y los canaliza a las autoridades competentes. Su diseño accesible, sus comunidades dinámicas tipo Discord y su login simplificado con Google + wallet invisible la hacen viable y poderosa desde la fase inicial, creando un camino real para reducir la impunidad y fortalecer el tejido social.
+
