@@ -36,33 +36,11 @@ export class ReportService {
     reportData: CreateReportData
   ): Promise<CreateReportResponse> {
     try {
-      // Paso 1: Subir foto y crear reporte en el backend (sin ZK proof aún)
-      const formData = new FormData();
-      formData.append('photo', reportData.photo);
-      formData.append('category', CATEGORIES[reportData.category].toString());
-      formData.append('location', JSON.stringify(reportData.location));
-
-      // Primero creamos el reporte para obtener el arkivTxId
-      const uploadResponse = await fetch(
-        `${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/reports/prepare`,
-        {
-          method: 'POST',
-          body: formData,
-        }
-      );
-
-      if (!uploadResponse.ok) {
-        const error = await uploadResponse.json();
-        throw new Error(error.message || 'Failed to prepare report');
-      }
-
-      const { arkivTxId } = await uploadResponse.json();
-
-      // Paso 2: Generar ZK proof con los datos del reporte
+      // Generar ZK proof primero
       const reportHash = await ZKProofService.hashReportData({
-        arkivTxId,
         category: CATEGORIES[reportData.category],
         timestamp: Date.now(),
+        location: reportData.location,
       });
 
       const zkProof = await ZKProofService.generateReportProof(
@@ -71,43 +49,42 @@ export class ReportService {
         'rikuy-reports-v1'
       );
 
-      // Paso 3: Enviar el reporte completo con ZK proof al backend
-      const submitResponse = await fetch(
+      // Enviar todo al backend en una sola llamada
+      const formData = new FormData();
+      formData.append('photo', reportData.photo);
+      formData.append('category', CATEGORIES[reportData.category].toString());
+      formData.append('location', JSON.stringify(reportData.location));
+      formData.append('zkProof', JSON.stringify({
+        proof: zkProof.proof,
+        publicSignals: [
+          zkProof.publicSignals.nullifier,
+          zkProof.publicSignals.merkleTreeRoot,
+          zkProof.publicSignals.message,
+          zkProof.publicSignals.scope,
+        ],
+      }));
+      formData.append('userSecret', identity.toString());
+
+      const response = await fetch(
         `${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/reports`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            arkivTxId,
-            category: CATEGORIES[reportData.category],
-            location: reportData.location,
-            zkProof: {
-              proof: zkProof.proof,
-              publicSignals: [
-                zkProof.publicSignals.nullifier,
-                zkProof.publicSignals.merkleTreeRoot,
-                zkProof.publicSignals.message,
-                zkProof.publicSignals.scope,
-              ],
-            },
-          }),
+          body: formData,
         }
       );
 
-      if (!submitResponse.ok) {
-        const error = await submitResponse.json();
-        throw new Error(error.message || 'Failed to submit report');
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to create report');
       }
 
-      const response = await submitResponse.json();
+      const result = await response.json();
 
       return {
         success: true,
-        reportId: response.reportId,
-        arkivTxId,
-        message: 'Report created successfully',
+        reportId: result.reportId,
+        arkivTxId: result._internal?.arkivTxId || '',
+        message: result.mensaje || 'Report created successfully',
       };
     } catch (error) {
       console.error('Error creating report:', error);
