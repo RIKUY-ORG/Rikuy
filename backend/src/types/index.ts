@@ -3,7 +3,14 @@
 export enum ReportCategory {
   INFRAESTRUCTURA = 0,
   INSEGURIDAD = 1,
-  BASURA = 2
+  BASURA = 2,
+  CORRUPCION = 3,
+  OTRO = 4
+}
+
+export interface ZKProof {
+  proof: string[];
+  publicSignals: string[];
 }
 
 export interface CreateReportRequest {
@@ -15,7 +22,8 @@ export interface CreateReportRequest {
     long: number;
     accuracy: number;
   };
-  userSecret?: string; // Para generar ZK proof (opcional)
+  zkProof: ZKProof;
+  userSecret?: string;
 }
 
 export interface CreateReportResponse {
@@ -27,10 +35,11 @@ export interface CreateReportResponse {
     mensaje: string;
   };
   mensaje: string;
-  // Campos internos (no exponer al frontend, solo para logging)
   _internal?: {
     arkivTxId: string;
     scrollTxHash: string;
+    gasUsed?: string;
+    gasCost?: string;
   };
 }
 

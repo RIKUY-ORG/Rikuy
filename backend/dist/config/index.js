@@ -24,11 +24,18 @@ exports.config = {
     openai: {
         apiKey: process.env.OPENAI_API_KEY,
     },
-    // Scroll
-    scroll: {
+    // Blockchain (Scroll)
+    blockchain: {
         rpcUrl: process.env.SCROLL_RPC_URL || 'https://sepolia-rpc.scroll.io',
         chainId: parseInt(process.env.SCROLL_CHAIN_ID || '534351'),
-        contractAddress: process.env.RIKUY_CONTRACT_ADDRESS,
+        networkName: 'scroll-sepolia',
+        relayerPrivateKey: process.env.RELAYER_PRIVATE_KEY,
+        contracts: {
+            rikuyCoreV2: process.env.RIKUY_CORE_V2_ADDRESS,
+            semaphoreAdapter: process.env.SEMAPHORE_ADAPTER_ADDRESS,
+            reportRegistry: process.env.REPORT_REGISTRY_ADDRESS,
+            treasury: process.env.TREASURY_ADDRESS,
+        },
     },
     // Redis
     redis: {
@@ -49,12 +56,15 @@ exports.config = {
         longMax: -53.0,
     },
 };
-// Validar configuración crítica
 const requiredEnvVars = [
     'ARKIV_PRIVATE_KEY',
     'PINATA_JWT',
     'OPENAI_API_KEY',
-    'RIKUY_CONTRACT_ADDRESS',
+    'RELAYER_PRIVATE_KEY',
+    'RIKUY_CORE_V2_ADDRESS',
+    'SEMAPHORE_ADAPTER_ADDRESS',
+    'REPORT_REGISTRY_ADDRESS',
+    'TREASURY_ADDRESS',
 ];
 if (exports.config.nodeEnv === 'production') {
     for (const envVar of requiredEnvVars) {

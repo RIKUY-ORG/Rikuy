@@ -1,0 +1,6 @@
+[submodule "lib/semaphore"]
+	path = lib/semaphore
+	url = https://github.com/semaphore-protocol/semaphore
+[submodule "lib/account-abstraction"]
+	path = lib/account-abstraction
+	url = https://github.com/eth-infinitism/account-abstraction

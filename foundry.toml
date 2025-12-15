@@ -2,7 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-solc = "0.8.23"
+solc = "0.8.28"
 optimizer = true
 optimizer_runs = 200
 via_ir = true
@@ -20,11 +20,15 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
     "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
     "@account-abstraction/=lib/account-abstraction/",
+    "@semaphore/=lib/semaphore/packages/contracts/contracts/",
     "forge-std/=lib/forge-std/src/"
 ]
 
 # File system permissions
-fs_permissions = [{ access = "read", path = "$ROOT/out" }]
+fs_permissions = [
+    { access = "read", path = "$ROOT/out" },
+    { access = "read-write", path = "./deployments" }
+]
 
 # Gas reporting
 gas_reports = ["*"]

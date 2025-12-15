@@ -5,42 +5,42 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "../interfaces/IReportRegistry.sol";
 import "../interfaces/ITreasury.sol";
-import "../interfaces/IZKVerifier.sol";
+import "../zk/SemaphoreAdapter.sol";
 
 /**
- * @title RikuyCore
- * @notice Contrato principal de RIKUY - Orquesta todo el sistema
- * @dev UUPS upgradeable para flexibilidad durante hackathon
+ * @title RikuyCoreV2
+ * @notice Contrato principal de RIKUY - Versión con Backend Relayer
+ * @dev Backend firma transacciones en nombre del usuario (paga gas)
+ *      Usuario genera ZK proof localmente (privacidad mantenida)
  *
  * Flujo:
- * 1. createReport() → Usuario anónimo crea reporte con ZK proof
- * 2. validateReport() → Vecinos validan si es real
- * 3. resolveReport() → Gobierno aprueba y libera fondos
+ * 1. Usuario genera ZK proof en su dispositivo (privado)
+ * 2. Usuario envía proof al backend (HTTP)
+ * 3. Backend verifica proof y crea TX on-chain
+ * 4. Backend paga gas → Usuario no necesita ETH
  */
-contract RikuyCore is UUPSUpgradeable, AccessControlUpgradeable {
+contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
 
     bytes32 public constant GOVERNMENT_ROLE = keccak256("GOVERNMENT");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR");
+    bytes32 public constant RELAYER_ROLE = keccak256("RELAYER"); // Backend wallet
 
     IReportRegistry public reportRegistry;
     ITreasury public treasury;
-    IZKVerifier public zkVerifier;
+    SemaphoreAdapter public semaphoreAdapter;
 
-    uint8 public constant VERIFICATION_THRESHOLD = 5; // 5 validaciones para verificar
+    uint8 public constant VERIFICATION_THRESHOLD = 5;
 
     // Tracking de validadores por reporte
     mapping(bytes32 => address[]) private reportValidators;
     mapping(bytes32 => uint256) private reportUpvotes;
     mapping(bytes32 => uint256) private reportDownvotes;
 
-    // Tracking de reportes por usuario (para analytics, opcional)
-    mapping(address => bytes32[]) private userReports;
-
     enum ReportStatus { Pending, Verified, Disputed, Resolved }
 
     event ReportCreated(
         bytes32 indexed reportId,
-        bytes32 indexed nullifier,
+        uint256 indexed nullifier,
         bytes32 arkivTxId,
         uint16 category,
         uint256 timestamp
@@ -66,7 +66,7 @@ contract RikuyCore is UUPSUpgradeable, AccessControlUpgradeable {
         address _admin,
         address _reportRegistry,
         address _treasury,
-        address _zkVerifier
+        address _semaphoreAdapter
     ) public initializer {
         __AccessControl_init();
 
@@ -75,52 +75,73 @@ contract RikuyCore is UUPSUpgradeable, AccessControlUpgradeable {
 
         reportRegistry = IReportRegistry(_reportRegistry);
         treasury = ITreasury(_treasury);
-        zkVerifier = IZKVerifier(_zkVerifier);
+        semaphoreAdapter = SemaphoreAdapter(_semaphoreAdapter);
     }
 
     /**
-     * @notice Crear reporte anónimo con ZK proof
+     * @notice Agregar backend wallet como relayer (puede crear reportes)
+     * @param _relayer Dirección del backend wallet
+     */
+    function addRelayer(address _relayer) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _grantRole(RELAYER_ROLE, _relayer);
+    }
+
+    /**
+     * @notice Crear reporte anónimo con ZK proof (versión Backend Relayer)
      * @param _arkivTxId Hash de transacción en Arkiv (evidencia inmutable)
-     * @param _categoryId Categoría (0: Infraestructura, 1: Inseguridad, 2: Basura)
-     * @param _zkProof Array con proof Groth16 [pA, pB, pC, pubSignals]
-     * @dev ZK proof demuestra: (1) tienes secret válido, (2) estabas cerca, (3) sin revelar ubicación
+     * @param _categoryId Categoría del incidente
+     * @param _zkProof Proof Groth16 [pA[2], pB[4], pC[2]]
+     * @param _pubSignals Public signals [nullifier, merkleRoot, message, scope]
+     * @dev Solo puede ser llamado por RELAYER (backend wallet)
+     *      Usuario genera proof localmente → Backend solo envía TX
      */
     function createReport(
         bytes32 _arkivTxId,
         uint16 _categoryId,
-        uint256[8] calldata _zkProof  // [pA[2], pB[4], pC[2]]
-    ) external returns (bytes32 reportId) {
-        require(_categoryId <= 2, "Invalid category");
+        uint256[8] calldata _zkProof,
+        uint256[4] calldata _pubSignals
+    ) external onlyRole(RELAYER_ROLE) returns (bytes32 reportId) {
 
-        // Decodificar proof (Groth16 format)
+        require(_categoryId <= 4, "Invalid category"); // 0-4 según spec
+
+        // Decodificar proof Groth16
         uint256[2] memory pA = [_zkProof[0], _zkProof[1]];
         uint256[2][2] memory pB = [[_zkProof[2], _zkProof[3]], [_zkProof[4], _zkProof[5]]];
         uint256[2] memory pC = [_zkProof[6], _zkProof[7]];
 
-        // Public signals del proof (hardcodeados para simplificar, en prod vienen del proof)
-        // TODO: Pasar como parámetro adicional
-        uint256[4] memory pubSignals = [
-            uint256(uint160(msg.sender)), // nullifier (temporal, reemplazar con hash real)
-            0, // merkleRoot (opcional)
-            _categoryId,
-            0  // proximityHash
-        ];
-
-        // Verificar ZK proof
-        bool isValidProof = zkVerifier.verifyProof(pA, pB, pC, pubSignals);
+        // Verificar ZK proof usando Semaphore
+        bool isValidProof = semaphoreAdapter.verifyProof(pA, pB, pC, _pubSignals);
         require(isValidProof, "Invalid ZK proof");
 
+        // Validar proof on-chain (marca nullifier como usado)
+        semaphoreAdapter.validateProof(pA, pB, pC, _pubSignals);
+
+        // Extraer nullifier
+        uint256 nullifier = _pubSignals[0];
+
         // Generar ID único del reporte
-        bytes32 nullifier = bytes32(pubSignals[0]);
-        reportId = keccak256(abi.encodePacked(nullifier, block.timestamp, _arkivTxId));
+        reportId = keccak256(abi.encodePacked(
+            nullifier,
+            block.timestamp,
+            _arkivTxId,
+            _categoryId
+        ));
 
         // Guardar en registry
-        reportRegistry.storeReport(reportId, _arkivTxId, nullifier, _categoryId);
+        reportRegistry.storeReport(
+            reportId,
+            _arkivTxId,
+            bytes32(nullifier),
+            _categoryId
+        );
 
-        // Tracking (opcional)
-        userReports[msg.sender].push(reportId);
-
-        emit ReportCreated(reportId, nullifier, _arkivTxId, _categoryId, block.timestamp);
+        emit ReportCreated(
+            reportId,
+            nullifier,
+            _arkivTxId,
+            _categoryId,
+            block.timestamp
+        );
 
         return reportId;
     }
@@ -129,7 +150,7 @@ contract RikuyCore is UUPSUpgradeable, AccessControlUpgradeable {
      * @notice Validar reporte (votar si es real o no)
      * @param _reportId ID del reporte
      * @param _isValid true = es real, false = es falso
-     * @dev Solo puedes validar una vez por reporte. Si alcanza threshold, se marca como verificado.
+     * @dev Cualquiera puede validar (ciudadanos verificando reportes)
      */
     function validateReport(bytes32 _reportId, bool _isValid) external {
         IReportRegistry.Report memory report = reportRegistry.getReport(_reportId);
@@ -160,7 +181,6 @@ contract RikuyCore is UUPSUpgradeable, AccessControlUpgradeable {
      * @notice Resolver reporte (solo gobierno)
      * @param _reportId ID del reporte
      * @param _approved true = aprobar y pagar, false = rechazar
-     * @dev Si se aprueba, se liberan fondos automáticamente desde Treasury
      */
     function resolveReport(bytes32 _reportId, bool _approved)
         external
@@ -178,10 +198,16 @@ contract RikuyCore is UUPSUpgradeable, AccessControlUpgradeable {
 
         // Si aprobado, liberar recompensas
         if (_approved) {
-            address reporter = address(uint160(uint256(report.nullifierHash))); // Temporal
             address[] memory validators = reportValidators[_reportId];
 
-            treasury.releaseRewards(_reportId, report.categoryId, reporter, validators);
+            // IMPORTANTE: No podemos pagar al reporter porque es anónimo
+            // La recompensa se maneja off-chain o via otro mecanismo
+            treasury.releaseRewards(
+                _reportId,
+                report.categoryId,
+                address(0), // Reporter anónimo (no podemos pagar on-chain)
+                validators
+            );
         }
 
         emit ReportResolved(_reportId, finalStatus, msg.sender);
@@ -226,27 +252,6 @@ contract RikuyCore is UUPSUpgradeable, AccessControlUpgradeable {
      */
     function getReportValidators(bytes32 _reportId) external view returns (address[] memory) {
         return reportValidators[_reportId];
-    }
-
-    /**
-     * @notice Obtener reportes de un usuario
-     */
-    function getUserReports(address _user) external view returns (bytes32[] memory) {
-        return userReports[_user];
-    }
-
-    /**
-     * @notice Actualizar dirección de Treasury (emergencia)
-     */
-    function setTreasury(address _newTreasury) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        treasury = ITreasury(_newTreasury);
-    }
-
-    /**
-     * @notice Actualizar threshold de verificación
-     */
-    function setVerificationThreshold(uint8 _newThreshold) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        // Implementar como variable de estado si se necesita cambiar
     }
 
     /**

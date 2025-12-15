@@ -34,7 +34,7 @@ contract RikuyPaymaster is BasePaymaster {
     event GasSponsored(address indexed user, uint256 actualGasCost, bytes4 functionSelector);
     event RateLimitHit(address indexed user, string reason);
 
-    constructor(IEntryPoint _entryPoint) BasePaymaster(_entryPoint) {}
+    constructor(IEntryPoint _entryPoint, address _owner) BasePaymaster(_entryPoint, _owner) {}
 
     /**
      * @notice Validar si debemos pagar gas por esta operación
@@ -57,7 +57,8 @@ contract RikuyPaymaster is BasePaymaster {
         uint256 callGasLimit = UserOperationLib.unpackCallGasLimit(userOp);
 
         // Solo patrocinamos createReport y validateReport
-        if (selector == bytes4(keccak256("createReport(bytes32,uint16,uint256[8])"))) {
+        // IMPORTANTE: Incluir TODOS los parámetros en el selector
+        if (selector == bytes4(keccak256("createReport(bytes32,uint16,uint256[8],uint256[4])"))) {
 
             // Verificar límites para reportes
             require(callGasLimit <= MAX_GAS_PER_REPORT, "Gas too high for report");
@@ -138,9 +139,6 @@ contract RikuyPaymaster is BasePaymaster {
 
     /**
      * @notice Fondear paymaster depositando en EntryPoint
-     * @dev Owner puede llamar addDeposit() o simplemente enviar ETH con deposit() heredada
+     * @dev Owner puede llamar deposit() heredada de BasePaymaster
      */
-    function addDeposit() external payable onlyOwner {
-        entryPoint.depositTo{value: msg.value}(address(this));
-    }
 }

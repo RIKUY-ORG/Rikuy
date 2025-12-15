@@ -18,9 +18,9 @@ class ScrollService {
     wallet;
     contract;
     constructor() {
-        this.provider = new ethers_1.ethers.JsonRpcProvider(config_1.config.scroll.rpcUrl);
-        this.wallet = new ethers_1.ethers.Wallet(config_1.config.arkiv.privateKey, this.provider);
-        this.contract = new ethers_1.ethers.Contract(config_1.config.scroll.contractAddress, RIKUY_ABI, this.wallet);
+        this.provider = new ethers_1.ethers.JsonRpcProvider(config_1.config.blockchain.rpcUrl);
+        this.wallet = new ethers_1.ethers.Wallet(config_1.config.blockchain.relayerPrivateKey, this.provider);
+        this.contract = new ethers_1.ethers.Contract(config_1.config.blockchain.contracts.rikuyCoreV2, RIKUY_ABI, this.wallet);
     }
     /**
      * Crear reporte en blockchain
