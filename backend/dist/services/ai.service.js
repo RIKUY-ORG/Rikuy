@@ -26,6 +26,8 @@ class AIService {
                 [types_1.ReportCategory.INFRAESTRUCTURA]: 'problemas de infraestructura (baches, calles rotas, etc)',
                 [types_1.ReportCategory.INSEGURIDAD]: 'problemas de inseguridad (drogas, vandalismo, etc)',
                 [types_1.ReportCategory.BASURA]: 'problemas de basura y limpieza',
+                [types_1.ReportCategory.CORRUPCION]: 'problemas de corrupción (sobornos, malversación, etc)',
+                [types_1.ReportCategory.OTRO]: 'otros problemas de la comunidad',
             };
             const prompt = `Analiza esta imagen de un reporte ciudadano sobre ${categoryNames[category]}.
 

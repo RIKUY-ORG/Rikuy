@@ -2,7 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const report_service_1 = require("../services/report.service");
-const scroll_service_1 = require("../services/scroll.service");
 const upload_1 = require("../middleware/upload");
 const rateLimit_1 = require("../middleware/rateLimit");
 const validation_1 = require("../middleware/validation");
@@ -19,24 +18,22 @@ router.post('/', rateLimit_1.reportRateLimiter, upload_1.upload.single('photo'),
                 error: 'Foto es requerida',
             });
         }
-        // Parsear body
         const body = {
             category: parseInt(req.body.category),
             description: req.body.description,
             location: JSON.parse(req.body.location),
+            zkProof: JSON.parse(req.body.zkProof),
             userSecret: req.body.userSecret,
         };
-        // Validar
         await validation_1.schemas.createReport.parseAsync(body);
-        // Crear request
         const request = {
             photo: req.file,
             category: body.category,
             description: body.description,
             location: body.location,
+            zkProof: body.zkProof,
             userSecret: body.userSecret,
         };
-        // Procesar
         const result = await report_service_1.reportService.createReport(request);
         res.json(result);
     }
@@ -63,7 +60,7 @@ router.get('/nearby', async (req, res) => {
             limit: req.query.limit ? parseInt(req.query.limit) : 50,
         };
         await validation_1.schemas.nearbyReports.parseAsync(query);
-        const reports = await report_service_1.reportService.getNearbyReports(query.lat, query.long, query.radiusKm, query.category);
+        const reports = await report_service_1.reportService.getNearbyReports(query.lat, query.long, query.radiusKm);
         res.json({
             success: true,
             data: reports,
@@ -84,7 +81,7 @@ router.get('/nearby', async (req, res) => {
 router.get('/:id', async (req, res) => {
     try {
         const report = await report_service_1.reportService.getReport(req.params.id);
-        if (!report.datosReporte) {
+        if (!report) {
             return res.status(404).json({
                 success: false,
                 error: 'No encontramos ese reporte. Verifica el ID e intenta de nuevo.',
@@ -103,31 +100,7 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
-/**
- * POST /api/reports/:id/validate
- * Validar (votar) un reporte
- */
-router.post('/:id/validate', (0, validation_1.validate)(validation_1.schemas.validateReport), async (req, res) => {
-    try {
-        const txHash = await scroll_service_1.scrollService.validateReport(req.params.id, req.body.isValid);
-        // Respuesta user-friendly sin exponer blockchain
-        res.json({
-            success: true,
-            mensaje: req.body.isValid
-                ? '¡Gracias por validar este reporte! Tu voto ha sido registrado.'
-                : 'Tu voto ha sido registrado. Ayudas a mantener la calidad de la comunidad.',
-            // Datos técnicos ocultos
-            _internal: {
-                txHash,
-            },
-        });
-    }
-    catch (error) {
-        console.error('[API] Validate report error:', error);
-        res.status(500).json({
-            success: false,
-            error: 'No pudimos registrar tu validación. Por favor intenta de nuevo.',
-        });
-    }
-});
+// TODO: Implementar endpoint de validación con relayer service si es necesario
+// El sistema de validación se manejará a través del contrato inteligente
+// cuando se implemente la funcionalidad de votación de reportes
 exports.default = router;

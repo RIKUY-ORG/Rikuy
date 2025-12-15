@@ -27,12 +27,16 @@ exports.validate = validate;
 // Schemas de validación
 exports.schemas = {
     createReport: zod_1.z.object({
-        category: zod_1.z.number().int().min(0).max(2),
+        category: zod_1.z.number().int().min(0).max(4),
         description: zod_1.z.string().max(500).optional(),
         location: zod_1.z.object({
             lat: zod_1.z.number().min(-55).max(-21),
             long: zod_1.z.number().min(-73.5).max(-53),
             accuracy: zod_1.z.number().positive(),
+        }),
+        zkProof: zod_1.z.object({
+            proof: zod_1.z.array(zod_1.z.string()).length(8),
+            publicSignals: zod_1.z.array(zod_1.z.string()).length(4),
         }),
         userSecret: zod_1.z.string().optional(),
     }),
@@ -44,7 +48,7 @@ exports.schemas = {
         lat: zod_1.z.number().min(-90).max(90),
         long: zod_1.z.number().min(-180).max(180),
         radiusKm: zod_1.z.number().positive().max(50),
-        category: zod_1.z.number().int().min(0).max(2).optional(),
+        category: zod_1.z.number().int().min(0).max(4).optional(),
         limit: zod_1.z.number().int().positive().max(100).optional(),
     }),
 };

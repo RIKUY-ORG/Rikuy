@@ -32,6 +32,8 @@
     "@privy-io/react-auth": "^3.8.1",
     "@react-aria/visually-hidden": "3.8.28",
     "@react-types/shared": "3.32.1",
+    "@semaphore-protocol/core": "^4.14.0",
+    "@semaphore-protocol/identity": "^4.14.0",
     "@tailwindcss/postcss": "4.1.11",
     "@tailwindcss/vite": "4.1.11",
     "clsx": "2.1.1",

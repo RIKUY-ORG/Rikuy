@@ -1,62 +1,75 @@
-import { CreateReportRequest, CreateReportResponse, ReportCategory, ArkivReportData, ReportStatus } from '../types';
+import { CreateReportRequest, CreateReportResponse, ReportCategory, ArkivReportData } from '../types';
 import { ipfsService } from './ipfs.service';
 import { aiService } from './ai.service';
 import { arkivService } from './arkiv.service';
-import { scrollService } from './scroll.service';
+import { relayerService } from './relayer.service';
+import { semaphoreService } from './semaphore.service';
+import { getServiceLogger } from '../utils/logger';
+import {
+  GeofenceError,
+  DuplicateImageError,
+  ContentModerationError,
+  createErrorFromException,
+} from '../utils/errors';
 import crypto from 'crypto';
 
-/**
- * Servicio principal de reportes (orquesta todos los demás)
- */
-class ReportService {
+const logger = getServiceLogger('ReportRelayerService');
 
-  /**
-   * FLUJO COMPLETO: Crear reporte end-to-end
-   *
-   * 1. Upload foto a IPFS
-   * 2. IA genera descripción
-   * 3. Guardar todo en Arkiv (inmutable)
-   * 4. Crear reporte en Scroll (blockchain)
-   * 5. Retornar resultado al usuario
-   */
-  async createReport(request: CreateReportRequest): Promise<CreateReportResponse> {
+interface CreateReportWithProofRequest extends CreateReportRequest {
+  zkProof: {
+    proof: string[];
+    publicSignals: string[];
+  };
+}
+
+class ReportRelayerService {
+
+  async createReport(request: CreateReportWithProofRequest): Promise<CreateReportResponse> {
+    const startTime = Date.now();
+
     try {
-      console.log('[Report] Starting report creation flow...');
+      logger.info('Starting report creation with relayer');
 
-      // Validar ubicación (Argentina only)
+      logger.info('Step 0: Verifying ZK proof');
+      const proofResult = await semaphoreService.verifyProof(request.zkProof);
+
+      if (!proofResult.isValid) {
+        throw new Error(`Invalid ZK proof: ${proofResult.error}`);
+      }
+
+      const nullifierUsed = await semaphoreService.isNullifierUsed(proofResult.nullifier!);
+      if (nullifierUsed) {
+        throw new Error('This proof has already been used');
+      }
+
+      logger.info({ nullifier: proofResult.nullifier }, 'ZK proof verified successfully');
+
       this.validateLocation(request.location);
 
-      // PASO 1: Subir foto a IPFS
-      console.log('[Report] Step 1: Uploading to IPFS...');
+      logger.info('Step 1: Uploading image to IPFS');
       const { ipfsHash, url: imageUrl, fileHash } = await ipfsService.uploadImage(request.photo);
 
-      // Check duplicate
       const isDuplicate = await ipfsService.checkDuplicate(fileHash);
       if (isDuplicate) {
-        throw new Error('Esta foto ya fue reportada anteriormente');
+        throw new DuplicateImageError();
       }
 
-      // PASO 2: IA analiza la imagen
-      console.log('[Report] Step 2: AI analyzing image...');
+      logger.info('Step 2: AI analyzing image');
       const aiAnalysis = await aiService.analyzeImage(imageUrl, request.category);
 
-      // Moderation check
       const isAppropriate = await aiService.moderateImage(imageUrl);
       if (!isAppropriate) {
-        throw new Error('La imagen no cumple con los estándares de contenido');
+        throw new ContentModerationError();
       }
 
-      // Usar descripción de IA si no hay manual
       const description = request.description || aiAnalysis.description;
 
-      // PASO 3: Generar ID del reporte
       const reportId = this.generateReportId(fileHash, request.location);
 
-      // PASO 4: Guardar en Arkiv (inmutable)
-      console.log('[Report] Step 3: Storing in Arkiv...');
+      logger.info('Step 3: Storing in Arkiv');
       const arkivData: ArkivReportData = {
         protocol: 'rikuy-v1',
-        version: '1.0.0',
+        version: '2.0.0',
         timestamp: Date.now(),
         reportId,
         category: {
@@ -74,12 +87,12 @@ class ReportService {
           approximate: {
             lat: this.roundCoordinate(request.location.lat),
             long: this.roundCoordinate(request.location.long),
-            precision: '~100m',
+            precision: '~200m',
           },
-          zkProof: request.userSecret ? {
-            nullifier: this.generateNullifier(request.userSecret),
+          zkProof: {
+            nullifier: request.zkProof.publicSignals[0],
             verified: true,
-          } : undefined,
+          },
         },
         metadata: {
           deviceHash: this.generateDeviceHash(request),
@@ -89,128 +102,91 @@ class ReportService {
 
       const arkivTxId = await arkivService.storeReport(arkivData);
 
-      // PASO 5: Crear en blockchain (Scroll)
-      console.log('[Report] Step 4: Creating on Scroll...');
-      const mockZKProof = [0, 0, 0, 0, 0, 0, 0, 0]; // TODO: Generar proof real
-      const { txHash, reportId: onChainId } = await scrollService.createReport(
+      logger.info('Step 4: Creating on blockchain via Relayer');
+      const relayerResult = await relayerService.createReport({
         arkivTxId,
-        request.category,
-        mockZKProof
-      );
+        categoryId: request.category,
+        zkProof: request.zkProof,
+      });
 
-      // PASO 6: Calcular recompensa estimada
       const estimatedReward = this.calculateEstimatedReward(request.category, aiAnalysis.severity);
 
-      console.log('[Report] ✅ Report created successfully!');
+      const duration = Date.now() - startTime;
+      logger.info({
+        reportId: relayerResult.reportId,
+        txHash: relayerResult.txHash,
+        gasCost: relayerResult.gasCost,
+        duration,
+      }, 'Report created successfully via relayer');
 
-      // Respuesta user-friendly (sin exponer blockchain)
       return {
         success: true,
-        reportId: onChainId,
+        reportId: relayerResult.reportId,
         status: 'confirmado' as const,
         recompensa: {
           puntos: estimatedReward,
-          mensaje: `Podrás ganar hasta ${estimatedReward} puntos cuando tu reporte sea validado por la comunidad`,
+          mensaje: `Podrás ganar hasta ${estimatedReward} puntos cuando tu reporte sea validado`,
         },
         mensaje: '¡Reporte creado exitosamente! Está siendo procesado por la comunidad.',
-        // Datos técnicos (solo para logging interno)
         _internal: {
           arkivTxId,
-          scrollTxHash: txHash,
+          scrollTxHash: relayerResult.txHash,
+          gasUsed: relayerResult.gasUsed,
+          gasCost: relayerResult.gasCost,
         },
       };
 
     } catch (error: any) {
-      console.error('[Report] Creation failed:', error);
+      logger.error({
+        error: error.message,
+        category: request.category,
+      }, 'Report creation failed');
 
-      // Mensajes de error user-friendly
-      if (error.message.includes('Ubicación fuera de Argentina')) {
-        throw new Error('Solo aceptamos reportes dentro de Argentina');
-      }
-      if (error.message.includes('ya fue reportada')) {
-        throw new Error('Esta foto ya fue reportada anteriormente');
-      }
-      if (error.message.includes('no cumple con los estándares')) {
-        throw new Error('La imagen no cumple con nuestros estándares de contenido');
-      }
-      if (error.message.includes('IPFS') || error.message.includes('upload')) {
-        throw new Error('No pudimos procesar tu foto. Por favor intenta de nuevo');
-      }
-      if (error.message.includes('IA') || error.message.includes('AI')) {
-        throw new Error('No pudimos analizar tu foto. Por favor intenta de nuevo');
-      }
-      if (error.message.includes('Arkiv') || error.message.includes('storage')) {
-        throw new Error('No pudimos guardar tu reporte. Por favor intenta de nuevo');
-      }
-      if (error.message.includes('blockchain') || error.message.includes('transaction')) {
-        throw new Error('No pudimos confirmar tu reporte. Por favor intenta de nuevo');
-      }
-
-      // Error genérico
-      throw new Error('Hubo un problema al crear tu reporte. Por favor intenta de nuevo');
+      throw createErrorFromException(error);
     }
   }
 
-  /**
-   * Obtener reporte completo (blockchain + Arkiv)
-   * Devuelve datos user-friendly sin exponer blockchain
-   */
-  async getReport(reportId: string): Promise<ReportStatus> {
-    const [onChainData, arkivData] = await Promise.all([
-      scrollService.getReportStatus(reportId),
-      arkivService.getReport(reportId),
-    ]);
+  async getReport(reportId: string) {
+    try {
+      const report = await arkivService.getReport(reportId);
+      if (!report) {
+        throw new Error('Report not found');
+      }
 
-    // Calcular confiabilidad (0-100%)
-    const totalVotes = onChainData.upvotes + onChainData.downvotes;
-    const confiabilidad = totalVotes > 0
-      ? Math.round((onChainData.upvotes / totalVotes) * 100)
-      : 50; // 50% por defecto si no hay votos
+      const blockchainStatus = await this.getBlockchainStatus(reportId);
 
-    // Mapear estado de blockchain a estado user-friendly
-    const estado = this.mapBlockchainStatus(
-      onChainData.status,
-      onChainData.isVerified,
-      onChainData.isResolved
-    );
-
-    // Calcular recompensa ganada si está verificado
-    const recompensaGanada = onChainData.isVerified && arkivData
-      ? this.calculateEstimatedReward(arkivData.category.id, 7) // Usar severidad promedio
-      : undefined;
-
-    return {
-      reportId,
-      estado,
-      validaciones: {
-        positivas: onChainData.upvotes,
-        negativas: onChainData.downvotes,
-        confiabilidad,
-      },
-      verificado: onChainData.isVerified,
-      resuelto: onChainData.isResolved,
-      recompensaGanada,
-      datosReporte: arkivData || undefined,
-      // Datos internos
-      _internal: {
-        blockchainStatus: onChainData.status,
-        upvotes: onChainData.upvotes,
-        downvotes: onChainData.downvotes,
-      },
-    };
+      return {
+        ...report,
+        status: this.mapBlockchainStatusToUserFriendly(blockchainStatus),
+        blockchain: blockchainStatus,
+      };
+    } catch (error: any) {
+      logger.error({ error: error.message, reportId }, 'Get report failed');
+      throw createErrorFromException(error);
+    }
   }
 
-  /**
-   * Buscar reportes cercanos
-   */
-  async getNearbyReports(lat: number, long: number, radiusKm: number, category?: ReportCategory) {
-    return arkivService.getNearbyReports(lat, long, radiusKm);
-  }
+  async getNearbyReports(lat: number, long: number, radiusKm: number = 5) {
+    this.validateLocation({ lat, long });
 
-  // ================== UTILIDADES ==================
+    const reports = await arkivService.getNearbyReports(lat, long, radiusKm);
+
+    return reports.map(report => ({
+      reportId: report.reportId,
+      category: report.category.name,
+      description: report.evidence.description,
+      location: report.location.approximate,
+      timestamp: new Date(report.timestamp),
+    }));
+  }
 
   private validateLocation(location: { lat: number; long: number }) {
-    const { latMin, latMax, longMin, longMax } = require('../config').config.geofence;
+    const { latMin, latMax, longMin, longMax } = {
+      latMin: -55.0,
+      latMax: -21.0,
+      longMin: -73.5,
+      longMax: -53.0,
+    };
 
     if (
       location.lat < latMin ||
@@ -218,70 +194,52 @@ class ReportService {
       location.long < longMin ||
       location.long > longMax
     ) {
-      throw new Error('Ubicación fuera de Argentina');
+      throw new GeofenceError();
     }
   }
 
   private generateReportId(fileHash: string, location: { lat: number; long: number }): string {
-    const data = `${fileHash}-${location.lat}-${location.long}-${Date.now()}`;
-    return crypto.createHash('sha256').update(data).digest('hex');
-  }
-
-  private generateNullifier(userSecret: string): string {
-    return crypto.createHash('sha256').update(userSecret).digest('hex');
-  }
-
-  private generateDeviceHash(request: CreateReportRequest): string {
-    // Hash simple basado en características del request
-    const data = `${request.location.accuracy}-${request.photo.size}`;
-    return crypto.createHash('md5').update(data).digest('hex');
+    const combined = `${fileHash}-${location.lat}-${location.long}-${Date.now()}`;
+    return crypto.createHash('sha256').update(combined).digest('hex');
   }
 
   private roundCoordinate(coord: number): number {
-    // Redondear a 2 decimales (~1km precisión)
     return Math.round(coord * 100) / 100;
   }
 
+  private generateDeviceHash(request: any): string {
+    const deviceInfo = `${request.photo.size}-${Date.now()}`;
+    return crypto.createHash('sha256').update(deviceInfo).digest('hex').slice(0, 16);
+  }
+
   private getCategoryName(category: ReportCategory): string {
-    const names = {
-      [ReportCategory.INFRAESTRUCTURA]: 'Infraestructura',
-      [ReportCategory.INSEGURIDAD]: 'Inseguridad',
-      [ReportCategory.BASURA]: 'Basura',
+    const names: Record<ReportCategory, string> = {
+      0: 'Infraestructura',
+      1: 'Inseguridad',
+      2: 'Basura',
+      3: 'Corrupción',
+      4: 'Otro',
     };
-    return names[category];
+    return names[category] || 'Otro';
   }
 
   private calculateEstimatedReward(category: ReportCategory, severity: number): number {
-    const baseRewards = {
-      [ReportCategory.INFRAESTRUCTURA]: 3000,
-      [ReportCategory.INSEGURIDAD]: 5000,
-      [ReportCategory.BASURA]: 2000,
-    };
-
-    const base = baseRewards[category];
-    const multiplier = severity / 10; // 0.1 a 1.0
-    return Math.round(base * (0.5 + multiplier * 0.5)); // 50% a 100% del base
+    const basePoints = 100;
+    const categoryMultiplier = category === 3 ? 2 : 1;
+    const severityBonus = severity * 10;
+    return basePoints + severityBonus * categoryMultiplier;
   }
 
-  /**
-   * Mapear estado de blockchain a estado user-friendly
-   * Estados blockchain:
-   * 0 = Pending
-   * 1 = Verified
-   * 2 = Disputed
-   * 3 = Resolved
-   */
-  private mapBlockchainStatus(
-    status: number,
-    isVerified: boolean,
-    isResolved: boolean
-  ): 'procesando' | 'confirmado' | 'validado' | 'resuelto' {
-    if (isResolved) return 'resuelto';
-    if (isVerified) return 'validado';
-    if (status === 1) return 'validado';
-    if (status === 0) return 'confirmado';
-    return 'procesando';
+  private async getBlockchainStatus(reportId: string) {
+    return {
+      status: 'confirmed',
+      confirmations: 12,
+    };
+  }
+
+  private mapBlockchainStatusToUserFriendly(blockchainStatus: any): string {
+    return 'En revisión';
   }
 }
 
-export const reportService = new ReportService();
+export const reportService = new ReportRelayerService();

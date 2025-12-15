@@ -2,7 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import { config } from './config';
 import reportsRouter from './routes/reports';
+import identityRouter from './routes/identity';
 import { rateLimiter } from './middleware/rateLimit';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import logger, { logRequest } from './utils/logger';
 
 const app = express();
 
@@ -23,26 +26,44 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Request logging middleware (ANTES de las rutas)
+app.use((req, res, next) => {
+  const startTime = Date.now();
+
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    logRequest(req.method, req.path, res.statusCode, duration);
+  });
+
+  next();
+});
+
 // Routes
+app.use('/api/identity', identityRouter);
 app.use('/api/reports', reportsRouter);
 
-// Error handler
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('[Server] Error:', err);
+// 404 handler (rutas no encontradas) - DESPUÉS de todas las rutas
+app.use(notFoundHandler);
 
-  res.status(err.status || 500).json({
-    success: false,
-    error: err.message || 'Internal server error',
-  });
-});
+// Error handler global - DEBE SER EL ÚLTIMO MIDDLEWARE
+app.use(errorHandler);
 
 // Start server
 const PORT = config.port;
 app.listen(PORT, () => {
-  console.log(`🚀 Rikuy Backend running on http://localhost:${PORT}`);
-  console.log(`📊 Environment: ${config.nodeEnv}`);
-  console.log(`⛓️  Scroll RPC: ${config.scroll.rpcUrl}`);
-  console.log(`📦 Arkiv RPC: ${config.arkiv.rpcUrl}`);
+  logger.info({
+    port: PORT,
+    environment: config.nodeEnv,
+    scrollRpc: config.blockchain.rpcUrl,
+    arkivRpc: config.arkiv.rpcUrl,
+  }, 'Rikuy Backend started successfully');
+
+  // Pretty console log for development
+  if (config.nodeEnv === 'development') {
+    console.log('\n🚀 Rikuy Backend ready');
+    console.log(`   → http://localhost:${PORT}`);
+    console.log(`   → Environment: ${config.nodeEnv}\n`);
+  }
 });
 
 export default app;

@@ -1,0 +1,11 @@
+[profile.default]
+src = "src"
+out = "out"
+libs = ["lib"]
+fs_permissions = [{ access = "read-write", path = "./deployments" }]
+
+[rpc_endpoints]
+scroll_sepolia = "${SCROLL_RPC_URL}"
+
+[etherscan]
+scroll_sepolia = { key = "${SCROLLSCAN_API_KEY}", url = "https://api-sepolia.scrollscan.com/api" }

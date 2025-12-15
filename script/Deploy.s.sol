@@ -2,10 +2,10 @@
 pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
-import "../src/core/RikuyCore.sol";
+import "../src/core/RikuyCoreV2.sol";
 import "../src/core/Treasury.sol";
 import "../src/core/ReportRegistry.sol";
-import "../src/zk/MockZKVerifier.sol";
+import "../src/zk/SemaphoreAdapter.sol";
 import "../src/governance/GovernmentRegistry.sol";
 import "../src/aa/RikuyPaymaster.sol";
 import "../src/mocks/MockUSX.sol";
@@ -26,11 +26,16 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  * ORDEN DE DEPLOY:
  * 0. USX Token (solo en testnet - deploy mock)
  * 1. ReportRegistry
- * 2. MockZKVerifier
+ * 2. SemaphoreAdapter (con Semaphore Protocol)
  * 3. Treasury (con USX)
- * 4. RikuyCore
+ * 4. RikuyCoreV2 (con Backend Relayer)
  * 5. GovernmentRegistry
  * 6. RikuyPaymaster (gasless)
+ *
+ * VARIABLES DE ENTORNO REQUERIDAS:
+ * - PRIVATE_KEY: Private key del deployer
+ * - SEMAPHORE_ADDRESS: Dirección del contrato Semaphore en Scroll
+ * - SEMAPHORE_GROUP_ID: ID del grupo Semaphore para ciudadanos
  *
  * USAGE:
  * Sepolia: forge script script/Deploy.s.sol --rpc-url scroll_sepolia --broadcast --verify
@@ -48,16 +53,20 @@ contract DeployScript is Script {
     // EntryPoint v0.7 (mismo en mainnet y testnet)
     address constant ENTRYPOINT = 0x0000000071727De22E5E9d8BAf0edAc6f37da032;
 
+    // Semaphore Protocol (se obtiene de .env)
+    address public semaphoreAddress;
+    uint256 public semaphoreGroupId;
+
     // Deployer
     address public deployer;
 
     // Contratos desplegados
     address public usxToken;
     MockUSX public mockUSX;
-    RikuyCore public rikuyCore;
+    RikuyCoreV2 public rikuyCore;
     RikuyTreasury public treasury;
     ReportRegistry public reportRegistry;
-    MockZKVerifier public zkVerifier;
+    SemaphoreAdapter public semaphoreAdapter;
     GovernmentRegistry public governmentRegistry;
     RikuyPaymaster public paymaster;
 
@@ -69,11 +78,17 @@ contract DeployScript is Script {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         deployer = vm.addr(deployerPrivateKey);
 
+        // Obtener variables de Semaphore
+        semaphoreAddress = vm.envAddress("SEMAPHORE_ADDRESS");
+        semaphoreGroupId = vm.envUint("SEMAPHORE_GROUP_ID");
+
         console.log("===========================================");
-        console.log("RIKUY - Deploy Script con USX");
+        console.log("RIKUY - Deploy Script con USX y Semaphore");
         console.log("===========================================");
         console.log("Deployer:", deployer);
         console.log("Chain ID:", block.chainid);
+        console.log("Semaphore Address:", semaphoreAddress);
+        console.log("Semaphore Group ID:", semaphoreGroupId);
 
         // Determinar qué USX usar
         if (block.chainid == SCROLL_MAINNET) {
@@ -124,11 +139,14 @@ contract DeployScript is Script {
         console.log("   ReportRegistry Proxy:", address(reportRegistry));
 
         // ==================================
-        // PASO 2: MockZKVerifier
+        // PASO 2: SemaphoreAdapter
         // ==================================
-        console.log("\n2. Deploying MockZKVerifier...");
-        zkVerifier = new MockZKVerifier();
-        console.log("   MockZKVerifier:", address(zkVerifier));
+        console.log("\n2. Deploying SemaphoreAdapter...");
+        console.log("   Using Semaphore at:", semaphoreAddress);
+        console.log("   Group ID:", semaphoreGroupId);
+
+        semaphoreAdapter = new SemaphoreAdapter(semaphoreAddress, semaphoreGroupId);
+        console.log("   SemaphoreAdapter deployed at:", address(semaphoreAdapter));
 
         // ==================================
         // PASO 3: Treasury con USX
@@ -154,19 +172,19 @@ contract DeployScript is Script {
         console.log("   Treasury USX Token:", usxToken);
 
         // ==================================
-        // PASO 4: RikuyCore
+        // PASO 4: RikuyCoreV2 (Backend Relayer)
         // ==================================
-        console.log("\n4. Deploying RikuyCore (UUPS)...");
+        console.log("\n4. Deploying RikuyCoreV2 (UUPS) with Backend Relayer...");
 
-        RikuyCore rikuyCoreImpl = new RikuyCore();
-        console.log("   RikuyCore Implementation:", address(rikuyCoreImpl));
+        RikuyCoreV2 rikuyCoreImpl = new RikuyCoreV2();
+        console.log("   RikuyCoreV2 Implementation:", address(rikuyCoreImpl));
 
         bytes memory coreInitData = abi.encodeWithSelector(
-            RikuyCore.initialize.selector,
+            RikuyCoreV2.initialize.selector,
             deployer,
             address(reportRegistry),
             treasuryProxy,
-            address(zkVerifier)
+            address(semaphoreAdapter)
         );
 
         ERC1967Proxy coreProxyContract = new ERC1967Proxy(
@@ -174,8 +192,8 @@ contract DeployScript is Script {
             coreInitData
         );
         rikuyCoreProxy = address(coreProxyContract);
-        rikuyCore = RikuyCore(rikuyCoreProxy);
-        console.log("   RikuyCore Proxy:", rikuyCoreProxy);
+        rikuyCore = RikuyCoreV2(rikuyCoreProxy);
+        console.log("   RikuyCoreV2 Proxy:", rikuyCoreProxy);
 
         // ==================================
         // PASO 5: GovernmentRegistry
@@ -187,10 +205,14 @@ contract DeployScript is Script {
         // ==================================
         // PASO 6: RikuyPaymaster (Gasless UX)
         // ==================================
-        console.log("\n6. Deploying RikuyPaymaster (gasless)...");
-        paymaster = new RikuyPaymaster(IEntryPoint(ENTRYPOINT));
-        console.log("   RikuyPaymaster:", address(paymaster));
-        console.log("   EntryPoint:", ENTRYPOINT);
+        // NOTA: Comentado porque EntryPoint v0.7 no está en Scroll Sepolia
+        // Para gasless, usamos Backend Relayer en RikuyCoreV2
+        console.log("\n6. Skipping RikuyPaymaster (EntryPoint not available on Scroll Sepolia)...");
+        console.log("   Using Backend Relayer for gasless transactions instead");
+        // paymaster = new RikuyPaymaster(IEntryPoint(ENTRYPOINT), deployer);
+        // console.log("   RikuyPaymaster:", address(paymaster));
+        // console.log("   EntryPoint:", ENTRYPOINT);
+        // console.log("   Owner:", deployer);
 
         // ==================================
         // POST-DEPLOYMENT: Configuración
@@ -229,9 +251,10 @@ contract DeployScript is Script {
         }
 
         // 4. Fondear Paymaster
-        console.log("4. Funding Paymaster for gasless txs...");
-        paymaster.deposit{value: 0.1 ether}();
-        console.log("   Paymaster funded with: 0.1 ETH");
+        // NOTA: Comentado porque Paymaster no está deployado
+        // console.log("4. Funding Paymaster for gasless txs...");
+        // paymaster.deposit{value: 0.1 ether}();
+        // console.log("   Paymaster funded with: 0.1 ETH");
 
         vm.stopBroadcast();
 
@@ -243,16 +266,18 @@ contract DeployScript is Script {
         console.log("===========================================");
         console.log("Network:", block.chainid == SCROLL_MAINNET ? "MAINNET" : "SEPOLIA");
         console.log("USX Token:              ", usxToken);
-        console.log("RikuyCore Proxy:        ", rikuyCoreProxy);
+        console.log("RikuyCoreV2 Proxy:      ", rikuyCoreProxy);
         console.log("Treasury Proxy:         ", treasuryProxy);
         console.log("ReportRegistry:         ", address(reportRegistry));
-        console.log("MockZKVerifier:         ", address(zkVerifier));
+        console.log("SemaphoreAdapter:       ", address(semaphoreAdapter));
+        console.log("Semaphore (external):   ", semaphoreAddress);
         console.log("GovernmentRegistry:     ", address(governmentRegistry));
-        console.log("RikuyPaymaster:         ", address(paymaster));
+        // console.log("RikuyPaymaster:         ", address(paymaster));
         console.log("===========================================");
 
         // Guardar deployment info
-        _saveDeploymentInfo();
+        // NOTA: Comentado porque requiere permisos de escritura
+        // _saveDeploymentInfo();
 
         console.log("\nDeployment completed!");
         console.log("\nNext steps:");
@@ -270,12 +295,14 @@ contract DeployScript is Script {
         string memory json = "deployment";
 
         vm.serializeAddress(json, "usxToken", usxToken);
-        vm.serializeAddress(json, "RikuyCore", rikuyCoreProxy);
+        vm.serializeAddress(json, "RikuyCoreV2", rikuyCoreProxy);
         vm.serializeAddress(json, "Treasury", treasuryProxy);
         vm.serializeAddress(json, "ReportRegistry", address(reportRegistry));
-        vm.serializeAddress(json, "MockZKVerifier", address(zkVerifier));
+        vm.serializeAddress(json, "SemaphoreAdapter", address(semaphoreAdapter));
+        vm.serializeAddress(json, "Semaphore", semaphoreAddress);
+        vm.serializeUint(json, "SemaphoreGroupId", semaphoreGroupId);
         vm.serializeAddress(json, "GovernmentRegistry", address(governmentRegistry));
-        vm.serializeAddress(json, "RikuyPaymaster", address(paymaster));
+        // vm.serializeAddress(json, "RikuyPaymaster", address(paymaster));
         string memory finalJson = vm.serializeAddress(json, "deployer", deployer);
 
         string memory filename = string.concat("./deployments/scroll-", network, ".json");
