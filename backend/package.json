@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@arkiv-network/sdk": "^0.1.0",
+    "@google/generative-ai": "^0.24.1",
     "@semaphore-protocol/core": "^4.14.0",
     "@types/crypto-js": "^4.2.2",
     "cors": "^2.8.5",

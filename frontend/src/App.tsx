@@ -5,9 +5,6 @@ import AboutPage from "@/pages/about";
 import PrivacidadPage from "./pages/privacidad";
 import TerminosPage from "./pages/terminos";
 import ContactoPage from "@/pages/contacto";
-// import ComoFuncionaPage from "@/pages/como-funciona";
-// import PerfilPage from "@/pages/perfil";
-// import ComunidadesPage from "@/pages/comunidades";
 import TutorialPage from "@/pages/tutorial";
 import AyudaPage from "@/pages/ayuda";
 import DenunciarPage from "./pages/Denuncia";
@@ -19,6 +16,8 @@ import ComunidadesPage from "./pages/Comunidad";
 import PerfilPage from "./pages/perfil";
 import LoginPage from "./pages/login";
 import SoportePage from "@/pages/soporte";
+import VerificarIdentidadPage from "./pages/verificar-identidad";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 function App() {
   return (
@@ -42,6 +41,9 @@ function App() {
 
       {/* Protegidas (por ahora públicas, luego las envolvemos con ProtectedRoute) */}
       <Route element={<PerfilPage />} path="/perfil" />
+
+      {/* NUEVA: Ruta de verificación de identidad */}
+      <Route element={<VerificarIdentidadPage />} path="/verificar-identidad" />
     </Routes>
   );
 }
