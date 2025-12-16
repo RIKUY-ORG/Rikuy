@@ -3,6 +3,10 @@ import { button as buttonStyles } from "@heroui/theme";
 import DefaultLayout from "@/layouts/default";
 import { RikuyLogo } from "@/components/rikuyLogo";
 import QuienesUsan from "./quienesUsan";
+import { usePrivy } from "@privy-io/react-auth";
+import { useIdentityStatus } from "@/hooks/useIdentityStatus";
+import { Tooltip } from "@heroui/tooltip";
+import { Button } from "@heroui/button";
 
 const links = {
   empezar: "/denunciar",
@@ -10,6 +14,72 @@ const links = {
 };
 
 export default function IndexPage() {
+  const { authenticated, login, ready } = usePrivy();
+  const { isVerified, isLoading } = useIdentityStatus();
+
+  // Determinar el comportamiento del botón "Denunciar"
+  const getDenunciarButton = () => {
+    // Usuario NO logueado
+    if (!authenticated) {
+      return (
+        <Button
+          onClick={login}
+          disabled={!ready}
+          className={buttonStyles({
+            color: "primary",
+            radius: "full",
+            variant: "shadow",
+            size: "lg",
+          })}
+          aria-label="Iniciar sesión para denunciar"
+        >
+          Inicia sesión para denunciar
+        </Button>
+      );
+    }
+
+    // Usuario logueado pero NO verificado
+    if (!isVerified) {
+      return (
+        <Tooltip
+          content="Primero debes verificar tu identidad boliviana"
+          color="warning"
+        >
+          <Button
+            as={Link}
+            href="/verificar-identidad"
+            className={buttonStyles({
+              color: "warning",
+              radius: "full",
+              variant: "shadow",
+              size: "lg",
+            })}
+            disabled={isLoading}
+            aria-label="Verificar identidad primero"
+          >
+            {isLoading ? "Verificando..." : "Verificar identidad primero"}
+          </Button>
+        </Tooltip>
+      );
+    }
+
+    // Usuario logueado y VERIFICADO
+    return (
+      <Link
+        href={links.empezar}
+        className={buttonStyles({
+          color: "primary",
+          radius: "full",
+          variant: "shadow",
+          size: "lg",
+        })}
+        aria-label="Comenzar una denuncia anónima"
+      >
+        Denunciar anónimamente
+      </Link>
+    );
+  };
+
   return (
     <DefaultLayout>
       {/* Hero principal */}
