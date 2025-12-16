@@ -17,6 +17,7 @@ import PerfilPage from "./pages/perfil";
 import LoginPage from "./pages/login";
 import SoportePage from "@/pages/soporte";
 import VerificarIdentidadPage from "./pages/verificar-identidad";
+import DenunciaExitosaPage from "./pages/denuncia-exitosa";
 import ProtectedRoute from "@/components/ProtectedRoute";
 
 function App() {
@@ -25,10 +26,41 @@ function App() {
       {/* Públicas */}
       <Route element={<IndexPage />} path="/" />
       <Route element={<AboutPage />} path="/sobre-nosotros" />
-      <Route element={<DenunciarPage />} path="/denunciar" />
-      <Route element={<PhotoPage />} path="/denunciar/foto" />
-      <Route element={<VideoPage />} path="/denunciar/video" />
-      <Route element={<RecorderPage />} path="/denunciar/audio" />
+
+      {/* Rutas de Denuncia - PROTEGIDAS (requieren verificación) */}
+      <Route
+        element={
+          <ProtectedRoute requireVerification={true}>
+            <DenunciarPage />
+          </ProtectedRoute>
+        }
+        path="/denunciar"
+      />
+      <Route
+        element={
+          <ProtectedRoute requireVerification={true}>
+            <PhotoPage />
+          </ProtectedRoute>
+        }
+        path="/denunciar/foto"
+      />
+      <Route
+        element={
+          <ProtectedRoute requireVerification={true}>
+            <VideoPage />
+          </ProtectedRoute>
+        }
+        path="/denunciar/video"
+      />
+      <Route
+        element={
+          <ProtectedRoute requireVerification={true}>
+            <RecorderPage />
+          </ProtectedRoute>
+        }
+        path="/denunciar/audio"
+      />
+
       <Route element={<ComoFuncionaPage />} path="/como-funciona" />
       <Route element={<PrivacidadPage />} path="/privacidad" />
       <Route element={<TerminosPage />} path="/terminos" />
@@ -44,6 +76,9 @@ function App() {
 
       {/* NUEVA: Ruta de verificación de identidad */}
       <Route element={<VerificarIdentidadPage />} path="/verificar-identidad" />
+
+      {/* NUEVA: Página de éxito después de crear denuncia */}
+      <Route element={<DenunciaExitosaPage />} path="/denuncia-exitosa" />
     </Routes>
   );
 }
