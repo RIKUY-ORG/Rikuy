@@ -38,27 +38,36 @@ export default function IndexPage() {
       );
     }
 
-    // Usuario logueado pero NO verificado
+    // Usuario logueado pero NO verificado - botón oscuro/deshabilitado
     if (!isVerified) {
       return (
         <Tooltip
-          content="Primero debes verificar tu identidad boliviana"
+          content="Primero debes verificar tu identidad boliviana para poder denunciar"
           color="warning"
+          placement="bottom"
         >
-          <Button
-            as={Link}
-            href="/verificar-identidad"
-            className={buttonStyles({
-              color: "warning",
-              radius: "full",
-              variant: "shadow",
-              size: "lg",
-            })}
-            disabled={isLoading}
-            aria-label="Verificar identidad primero"
-          >
-            {isLoading ? "Verificando..." : "Verificar identidad primero"}
-          </Button>
+          <div>
+            <Button
+              as={Link}
+              href="/verificar-identidad"
+              className={buttonStyles({
+                color: "default",
+                radius: "full",
+                variant: "flat",
+                size: "lg",
+              })}
+              isDisabled={isLoading}
+              aria-label="Verificar identidad para denunciar"
+              style={{
+                opacity: 0.5,
+                cursor: 'not-allowed',
+                backgroundColor: '#888',
+                color: '#fff'
+              }}
+            >
+              {isLoading ? "Verificando..." : "🔒 Denunciar (requiere verificación)"}
+            </Button>
+          </div>
         </Tooltip>
       );
     }
@@ -100,18 +109,7 @@ export default function IndexPage() {
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Link
-            href={links.empezar}
-            className={buttonStyles({
-              color: "primary",
-              radius: "full",
-              variant: "shadow",
-              size: "lg",
-            })}
-            aria-label="Comenzar una denuncia anónima"
-          >
-            Denunciar anónimamente
-          </Link>
+          {getDenunciarButton()}
           <Link
             href={links.comoFunciona}
             className={buttonStyles({

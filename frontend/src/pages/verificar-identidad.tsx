@@ -112,10 +112,13 @@ export default function VerificarIdentidadPage() {
           color: 'success',
         });
 
-        // Guardar commitment en localStorage (por si acaso)
+        // Guardar commitment y secret en localStorage
         if (result.data?.identity?.commitment) {
           localStorage.setItem('rikuy_commitment', result.data.identity.commitment);
           localStorage.setItem('rikuy_verified', 'true');
+        }
+        if (result.data?.identity?.secret) {
+          localStorage.setItem('rikuy_identity_secret', result.data.identity.secret);
         }
 
         // Redirigir a denunciar

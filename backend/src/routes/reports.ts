@@ -13,7 +13,7 @@ const router = Router();
  */
 router.post(
   '/',
-  reportRateLimiter,
+  // reportRateLimiter, // DESACTIVADO temporalmente - requiere Redis
   upload.single('photo'),
   async (req: Request, res: Response) => {
     try {
