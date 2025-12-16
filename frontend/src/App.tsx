@@ -1,6 +1,6 @@
 import { Route, Routes } from "react-router-dom";
 
-import IndexPage from "@/pages/index";
+// import IndexPage from "@/pages/index";
 import AboutPage from "@/pages/about";
 import PrivacidadPage from "./pages/privacidad";
 import TerminosPage from "./pages/terminos";
@@ -19,12 +19,15 @@ import ComunidadesPage from "./pages/Comunidad";
 import PerfilPage from "./pages/perfil";
 import LoginPage from "./pages/login";
 import SoportePage from "@/pages/soporte";
+import IndexPage from "./pages/Landing";
+import MetricsFullPage from "./pages/Map";
 
 function App() {
   return (
     <Routes>
       {/* Públicas */}
       <Route element={<IndexPage />} path="/" />
+      <Route element={<MetricsFullPage />} path="/mapa" /> 
       <Route element={<AboutPage />} path="/sobre-nosotros" />
       <Route element={<DenunciarPage />} path="/denunciar" />
       <Route element={<PhotoPage />} path="/denunciar/foto" />
