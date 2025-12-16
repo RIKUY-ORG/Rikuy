@@ -2,6 +2,13 @@
  * Configuración de Semaphore Protocol para Rikuy
  */
 
+/**
+ * Normaliza URL removiendo slashes finales para evitar dobles slashes
+ */
+function normalizeUrl(url: string): string {
+  return url.replace(/\/+$/, ''); // Remueve todos los slashes al final
+}
+
 export const SEMAPHORE_CONFIG = {
   // Estas variables se deben configurar después del deployment
   // Por ahora usamos valores placeholder
@@ -13,8 +20,8 @@ export const SEMAPHORE_CONFIG = {
   SCROLL_RPC_URL: import.meta.env.VITE_SCROLL_RPC_URL || 'https://sepolia-rpc.scroll.io',
   SCROLL_CHAIN_ID: import.meta.env.VITE_SCROLL_CHAIN_ID || '534351',
 
-  // Backend API
-  BACKEND_API_URL: import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001',
+  // Backend API - Normalizado para evitar dobles slashes
+  BACKEND_API_URL: normalizeUrl(import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001'),
 };
 
 // Constantes de categorías (deben coincidir con los contratos)
