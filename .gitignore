@@ -28,6 +28,7 @@ broadcast/
 *.json
 !package.json
 !tsconfig.json
+!backend/src/contracts/abis/*.json
 
 # IDE
 .vscode/
