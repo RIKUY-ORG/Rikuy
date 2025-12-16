@@ -16,7 +16,7 @@ export function Hero({ config }: { config: HeroConfig }) {
       aria-label="Introducción a RIKUY"
     >
       <div className="max-w-2xl text-center">
-        <RikuyLogo size={320} className="mx-auto mb-4" />
+        <RikuyLogo size={180} className="mx-auto mb-4" />
         <h1 className="text-3xl md:text-5xl font-bold tracking-tight text-ink dark:text-milk">
           <span className="text-green-600 dark:text-green-400">RIKUY</span>: {config.title}
         </h1>

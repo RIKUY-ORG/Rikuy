@@ -14,7 +14,7 @@ export default function DefaultLayout({ children }: { children: React.ReactNode 
   return (
     <div className="relative flex flex-col h-screen">
       <Navbar />
-      <main className="container mx-auto max-w-7xl px-6 flex-grow pt-8">
+      <main className="container mx-auto max-w-7xl px-6 flex-grow">
         {/* Breadcrumbs dinámicos: solo se muestran si hay segmentos */}
         {segments.length > 0 && (
           <Breadcrumbs variant="bordered" className="mb-4">

@@ -1,21 +1,25 @@
-import OpenAI from 'openai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { config } from '../config';
 import { ReportCategory } from '../types';
 
 /**
  * Servicio de IA para análisis automático de imágenes
+ * Usa Google Gemini (gratuito)
  */
 class AIService {
-  private openai: OpenAI;
+  private genAI: GoogleGenerativeAI;
+  private model: any;
 
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: config.openai.apiKey,
-    });
+    this.genAI = new GoogleGenerativeAI(config.ai.geminiApiKey);
+    // Usar Gemini 1.5 Flash (rápido y gratuito)
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+    console.log('[AI] Gemini service initialized');
   }
 
   /**
-   * Generar descripción automática de foto usando GPT-4 Vision
+   * Generar descripción automática de foto usando Gemini Vision
    */
   async analyzeImage(
     imageUrl: string,
@@ -41,38 +45,38 @@ Genera:
 2. Tags relevantes (3-5 palabras clave en español)
 3. Nivel de severidad del 1 al 10 (1=menor, 10=crítico)
 
-Responde en formato JSON:
+Responde SOLO en formato JSON válido, sin texto adicional:
 {
   "description": "...",
   "tags": ["tag1", "tag2", ...],
   "severity": número
 }`;
 
-      const response = await this.openai.chat.completions.create({
-        model: 'gpt-4-vision-preview',
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              {
-                type: 'image_url',
-                image_url: { url: imageUrl },
-              },
-            ],
-          },
-        ],
-        max_tokens: 300,
-        temperature: 0.3, // Más determinístico
-      });
+      // Descargar imagen y convertir a base64
+      const response = await fetch(imageUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
 
-      const content = response.choices[0]?.message?.content;
-      if (!content) {
-        throw new Error('No response from OpenAI');
+      // Enviar a Gemini
+      const result = await this.model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: base64,
+          },
+        },
+      ]);
+
+      const text = result.response.text();
+
+      // Limpiar la respuesta (a veces Gemini agrega ```json o comentarios)
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON found in response');
       }
 
-      // Parsear respuesta JSON
-      const analysis = JSON.parse(content);
+      const analysis = JSON.parse(jsonMatch[0]);
 
       console.log(`[AI] Image analyzed: ${analysis.description.substring(0, 50)}...`);
 
@@ -95,21 +99,59 @@ Responde en formato JSON:
   }
 
   /**
-   * Verificar si imagen es apropiada (content moderation)
+   * Verificar si imagen es apropiada (content moderation con Gemini)
    */
   async moderateImage(imageUrl: string): Promise<boolean> {
     try {
-      const response = await this.openai.moderations.create({
-        input: imageUrl,
-      });
+      // Descargar imagen
+      const response = await fetch(imageUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
 
-      const flagged = response.results[0]?.flagged || false;
+      const prompt = `Analiza esta imagen y determina si es apropiada para un reporte ciudadano.
 
-      if (flagged) {
-        console.warn(`[AI] Image flagged by moderation: ${imageUrl}`);
+La imagen NO debe contener:
+- Contenido explícitamente sexual o NSFW
+- Violencia gráfica extrema
+- Contenido que incite al odio
+
+La imagen SÍ puede contener:
+- Problemas de infraestructura (baches, calles dañadas)
+- Basura o suciedad
+- Grafitis o vandalismo menor
+- Situaciones de inseguridad sin violencia extrema
+
+Responde SOLO con un JSON:
+{
+  "appropriate": true/false,
+  "reason": "explicación breve si no es apropiada"
+}`;
+
+      const result = await this.model.generateContent([
+        prompt,
+        {
+          inlineData: {
+            mimeType: 'image/jpeg',
+            data: base64,
+          },
+        },
+      ]);
+
+      const text = result.response.text();
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+      if (!jsonMatch) {
+        console.warn('[AI] Could not parse moderation response, allowing image');
+        return true;
       }
 
-      return !flagged;
+      const moderation = JSON.parse(jsonMatch[0]);
+
+      if (!moderation.appropriate) {
+        console.warn(`[AI] Image flagged: ${moderation.reason}`);
+      }
+
+      return moderation.appropriate;
 
     } catch (error) {
       console.error('[AI] Moderation failed:', error);

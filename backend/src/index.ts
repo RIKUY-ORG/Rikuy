@@ -14,8 +14,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting global
-app.use(rateLimiter);
+// Rate limiting global (DESACTIVADO temporalmente - requiere Redis)
+// app.use(rateLimiter);
 
 // Health check
 app.get('/health', (req, res) => {

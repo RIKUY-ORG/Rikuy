@@ -26,10 +26,12 @@ import { ThemeSwitch } from "@/components/theme-switch";
 import { FaGithub, FaXTwitter } from "react-icons/fa6";
 import { RikuyLogo } from "./rikuyLogo";
 import { useAvatarContext } from "@/context/avatarContext";
+import { useIdentityStatus } from "@/hooks/useIdentityStatus";
 
 export const Navbar = () => {
   const { user, authenticated, login, logout, ready } = usePrivy();
   const { AvatarComp } = useAvatarContext();
+  const { isVerified, isLoading: identityLoading } = useIdentityStatus();
 
   // 🔍 Buscador comentado por ahora
   /*
@@ -135,6 +137,22 @@ export const Navbar = () => {
                       {user.wallet?.address?.slice(0, 6)}...{user.wallet
                         ?.address?.slice(-4)}
                     </p>
+
+                    {/* Mostrar botón de verificación si NO está verificado */}
+                    {!identityLoading && !isVerified && (
+                      <Button
+                        as={Link}
+                        href="/verificar-identidad"
+                        color="warning"
+                        radius="full"
+                        size="sm"
+                        variant="solid"
+                        className="font-semibold"
+                      >
+                      Verificarme (requerido)
+                      </Button>
+                    )}
+
                     <Button
                       as={Link}
                       href="/denunciar"
