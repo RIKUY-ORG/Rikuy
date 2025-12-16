@@ -11,6 +11,7 @@ import { title } from '@/components/primitives';
 import { addToast } from '@heroui/toast';
 import { Button } from '@heroui/button';
 import { Card, CardBody, CardHeader } from '@heroui/card';
+import { SEMAPHORE_CONFIG } from '@/config/semaphore';
 
 export default function VerificarIdentidadPage() {
   const navigate = useNavigate();
@@ -96,7 +97,7 @@ export default function VerificarIdentidadPage() {
       formData.append('userAddress', user.wallet.address);
 
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_API_URL}/api/identity/verify`,
+        `${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/identity/verify`,
         {
           method: 'POST',
           body: formData,
