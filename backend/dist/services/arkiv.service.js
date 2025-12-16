@@ -60,6 +60,7 @@ class ArkivService {
     walletClient;
     account;
     sdkPromise;
+    isInitialized = false;
     constructor() {
         // Lazy load SDK usando dynamic import
         this.sdkPromise = this.initializeSDK();
@@ -83,14 +84,16 @@ class ArkivService {
                 transport: http(),
                 account: this.account,
             });
-            console.log('[Arkiv] Service initialized');
+            console.log('[Arkiv] ✅ Service initialized');
             console.log('[Arkiv] Chain:', mendoza.name);
             console.log('[Arkiv] Account:', this.account.address);
+            this.isInitialized = true;
             return true;
         }
         catch (error) {
-            console.error('[Arkiv] Failed to initialize SDK:', error);
-            throw error;
+            console.error('[Arkiv] ⚠️  Failed to initialize SDK - running in degraded mode:', error);
+            this.isInitialized = false;
+            return false;
         }
     }
     // Helper para lazy-load query utils
@@ -106,7 +109,12 @@ class ArkivService {
     async storeReport(reportData) {
         try {
             // Esperar a que el SDK se inicialice
-            await this.sdkPromise;
+            const initialized = await this.sdkPromise;
+            // Si Arkiv no está disponible, retornar un ID mock
+            if (!initialized || !this.isInitialized) {
+                console.warn(`[Arkiv] ⚠️  SDK not available, returning mock ID for report: ${reportData.reportId}`);
+                return `mock-arkiv-${reportData.reportId}`;
+            }
             console.log(`[Arkiv] Storing report: ${reportData.reportId}`);
             // Dynamic import de utils
             const { jsonToPayload, ExpirationTime } = await Promise.resolve().then(() => __importStar(require('@arkiv-network/sdk/utils')));
@@ -140,7 +148,8 @@ class ArkivService {
         }
         catch (error) {
             console.error('[Arkiv] ❌ Error storing report:', error);
-            throw new Error(`Failed to store report in Arkiv: ${error.message}`);
+            // Retornar mock en lugar de fallar
+            return `mock-arkiv-${reportData.reportId}`;
         }
     }
     /**
@@ -149,7 +158,11 @@ class ArkivService {
      */
     async getReport(reportId) {
         try {
-            await this.sdkPromise;
+            const initialized = await this.sdkPromise;
+            if (!initialized || !this.isInitialized) {
+                console.warn(`[Arkiv] ⚠️  SDK not available, cannot fetch report: ${reportId}`);
+                return null;
+            }
             const { eq } = await this.loadQueryUtils();
             console.log(`[Arkiv] Fetching report: ${reportId}`);
             // Construir query con filtro por reportId
@@ -179,7 +192,11 @@ class ArkivService {
      */
     async getNearbyReports(lat, long, radiusKm, limit = 50) {
         try {
-            await this.sdkPromise;
+            const initialized = await this.sdkPromise;
+            if (!initialized || !this.isInitialized) {
+                console.warn(`[Arkiv] ⚠️  SDK not available, cannot query nearby reports`);
+                return [];
+            }
             const { eq } = await this.loadQueryUtils();
             console.log(`[Arkiv] Querying nearby reports (${lat}, ${long}) within ${radiusKm}km`);
             // Calcular bounding box
@@ -234,7 +251,11 @@ class ArkivService {
      */
     async getReportsByCategory(category, limit = 50) {
         try {
-            await this.sdkPromise;
+            const initialized = await this.sdkPromise;
+            if (!initialized || !this.isInitialized) {
+                console.warn(`[Arkiv] ⚠️  SDK not available, cannot query by category`);
+                return [];
+            }
             const { eq } = await this.loadQueryUtils();
             console.log(`[Arkiv] Fetching reports by category: ${category}`);
             const query = this.publicClient.buildQuery();
@@ -262,7 +283,11 @@ class ArkivService {
      */
     async getRecentReports(limit = 20) {
         try {
-            await this.sdkPromise;
+            const initialized = await this.sdkPromise;
+            if (!initialized || !this.isInitialized) {
+                console.warn(`[Arkiv] ⚠️  SDK not available, cannot query recent reports`);
+                return [];
+            }
             const { eq } = await this.loadQueryUtils();
             console.log(`[Arkiv] Fetching ${limit} recent reports`);
             const query = this.publicClient.buildQuery();
@@ -306,7 +331,10 @@ class ArkivService {
      */
     async healthCheck() {
         try {
-            await this.sdkPromise;
+            const initialized = await this.sdkPromise;
+            if (!initialized || !this.isInitialized) {
+                return false;
+            }
             const { eq } = await this.loadQueryUtils();
             // Intentar hacer una query simple
             const query = this.publicClient.buildQuery();
