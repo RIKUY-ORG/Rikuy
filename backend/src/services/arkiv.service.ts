@@ -1,7 +1,3 @@
-import { createPublicClient, createWalletClient, http } from '@arkiv-network/sdk';
-import { privateKeyToAccount } from '@arkiv-network/sdk/accounts';
-import { jsonToPayload, ExpirationTime } from '@arkiv-network/sdk/utils';
-import { eq } from '@arkiv-network/sdk/query';
 import { config } from '../config';
 import { ArkivReportData } from '../types';
 
@@ -24,32 +20,61 @@ const mendoza = {
 /**
  * Servicio para interactuar con Arkiv (storage inmutable)
  * Implementación oficial basada en Arkiv SDK
+ * Usa dynamic imports para evitar conflictos ES/CommonJS
  */
 class ArkivService {
-  private publicClient;
-  private walletClient;
-  private account;
+  private publicClient: any;
+  private walletClient: any;
+  private account: any;
+  private sdkPromise: Promise<any>;
 
   constructor() {
-    // Setup account
-    this.account = privateKeyToAccount(config.arkiv.privateKey as `0x${string}`);
+    // Lazy load SDK usando dynamic import
+    this.sdkPromise = this.initializeSDK();
+  }
 
-    // Cliente público (para queries)
-    this.publicClient = createPublicClient({
-      chain: mendoza,
-      transport: http(),
-    });
+  private async initializeSDK() {
+    try {
+      const [
+        { createPublicClient, createWalletClient, http },
+        { privateKeyToAccount }
+      ] = await Promise.all([
+        import('@arkiv-network/sdk'),
+        import('@arkiv-network/sdk/accounts')
+      ]);
 
-    // Wallet client (para writes) - autenticado
-    this.walletClient = createWalletClient({
-      chain: mendoza,
-      transport: http(),
-      account: this.account,
-    });
+      // Setup account
+      this.account = privateKeyToAccount(config.arkiv.privateKey as `0x${string}`);
 
-    console.log('[Arkiv] Service initialized');
-    console.log('[Arkiv] Chain:', mendoza.name);
-    console.log('[Arkiv] Account:', this.account.address);
+      // Cliente público (para queries)
+      this.publicClient = createPublicClient({
+        chain: mendoza,
+        transport: http(),
+      });
+
+      // Wallet client (para writes) - autenticado
+      this.walletClient = createWalletClient({
+        chain: mendoza,
+        transport: http(),
+        account: this.account,
+      });
+
+      console.log('[Arkiv] Service initialized');
+      console.log('[Arkiv] Chain:', mendoza.name);
+      console.log('[Arkiv] Account:', this.account.address);
+
+      return true;
+    } catch (error) {
+      console.error('[Arkiv] Failed to initialize SDK:', error);
+      throw error;
+    }
+  }
+
+  // Helper para lazy-load query utils
+  private async loadQueryUtils() {
+    await this.sdkPromise;
+    const { eq } = await import('@arkiv-network/sdk/query');
+    return { eq };
   }
 
   /**
@@ -58,7 +83,13 @@ class ArkivService {
    */
   async storeReport(reportData: ArkivReportData): Promise<string> {
     try {
+      // Esperar a que el SDK se inicialice
+      await this.sdkPromise;
+
       console.log(`[Arkiv] Storing report: ${reportData.reportId}`);
+
+      // Dynamic import de utils
+      const { jsonToPayload, ExpirationTime } = await import('@arkiv-network/sdk/utils');
 
       // Convertir datos a payload JSON
       const payload = jsonToPayload(reportData);
@@ -105,6 +136,9 @@ class ArkivService {
    */
   async getReport(reportId: string): Promise<ArkivReportData | null> {
     try {
+      await this.sdkPromise;
+      const { eq } = await this.loadQueryUtils();
+
       console.log(`[Arkiv] Fetching report: ${reportId}`);
 
       // Construir query con filtro por reportId
@@ -143,6 +177,9 @@ class ArkivService {
     limit: number = 50
   ): Promise<ArkivReportData[]> {
     try {
+      await this.sdkPromise;
+      const { eq } = await this.loadQueryUtils();
+
       console.log(`[Arkiv] Querying nearby reports (${lat}, ${long}) within ${radiusKm}km`);
 
       // Calcular bounding box
@@ -172,8 +209,8 @@ class ArkivService {
 
       // Filtrar por distancia en memoria
       const reports = result.entities
-        .map((entity) => entity.toJson() as ArkivReportData)
-        .filter((report) => {
+        .map((entity: any) => entity.toJson() as ArkivReportData)
+        .filter((report: any) => {
           const reportLat = report.location.approximate.lat;
           const reportLong = report.location.approximate.long;
 
@@ -207,6 +244,9 @@ class ArkivService {
    */
   async getReportsByCategory(category: number, limit: number = 50): Promise<ArkivReportData[]> {
     try {
+      await this.sdkPromise;
+      const { eq } = await this.loadQueryUtils();
+
       console.log(`[Arkiv] Fetching reports by category: ${category}`);
 
       const query = this.publicClient.buildQuery();
@@ -221,7 +261,7 @@ class ArkivService {
       }
 
       const reports = result.entities
-        .map((entity) => entity.toJson() as ArkivReportData)
+        .map((entity: any) => entity.toJson() as ArkivReportData)
         .slice(0, limit);
 
       console.log(`[Arkiv] ✅ Found ${reports.length} reports in category ${category}`);
@@ -238,6 +278,9 @@ class ArkivService {
    */
   async getRecentReports(limit: number = 20): Promise<ArkivReportData[]> {
     try {
+      await this.sdkPromise;
+      const { eq } = await this.loadQueryUtils();
+
       console.log(`[Arkiv] Fetching ${limit} recent reports`);
 
       const query = this.publicClient.buildQuery();
@@ -252,8 +295,8 @@ class ArkivService {
 
       // Ordenar por timestamp descendente
       const reports = result.entities
-        .map((entity) => entity.toJson() as ArkivReportData)
-        .sort((a, b) => b.timestamp - a.timestamp)
+        .map((entity: any) => entity.toJson() as ArkivReportData)
+        .sort((a: any, b: any) => b.timestamp - a.timestamp)
         .slice(0, limit);
 
       console.log(`[Arkiv] ✅ Found ${reports.length} recent reports`);
@@ -294,6 +337,9 @@ class ArkivService {
    */
   async healthCheck(): Promise<boolean> {
     try {
+      await this.sdkPromise;
+      const { eq } = await this.loadQueryUtils();
+
       // Intentar hacer una query simple
       const query = this.publicClient.buildQuery();
       await query.where(eq('protocol', 'rikuy-v1')).fetch();
