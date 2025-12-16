@@ -34,14 +34,29 @@ class OCRService {
   async extractBolivianCI(imageBuffer: Buffer): Promise<ExtractedCIData> {
     const text = await this.extractText(imageBuffer);
 
-    const ciPattern = /(\d{8})\s*([A-Z]{2})/;
-    const match = text.match(ciPattern);
+    // Intentar múltiples patrones para mayor flexibilidad
+    const ciPatterns = [
+      /(\d{8})\s*([A-Z]{2})/,           // Estándar: 12345678 LP
+      /(\d{7,9})\s*([A-Z]{1,3})/,       // Más flexible
+      /CI[:\s]*(\d{7,9})\s*([A-Z]{2})/, // Con prefijo CI
+      /(\d{8})\s*[-–]\s*([A-Z]{2})/     // Con guión
+    ];
+
+    let match = null;
+    for (const pattern of ciPatterns) {
+      match = text.match(pattern);
+      if (match) break;
+    }
 
     if (!match) {
+      logger.warn({ rawText: text.substring(0, 200) }, 'Failed to extract CI number');
       throw new Error('No se pudo extraer número de CI del documento');
     }
 
-    const [, documentNumber, expedition] = match;
+    let [, documentNumber, expedition] = match;
+
+    // Normalizar a 8 dígitos si es necesario
+    documentNumber = documentNumber.padStart(8, '0');
 
     if (!isValidDepartment(expedition)) {
       throw new Error(`Departamento de expedición inválido: ${expedition}`);
@@ -119,10 +134,14 @@ class OCRService {
   }
 
   private async preprocessImage(imageBuffer: Buffer): Promise<Buffer> {
+    // Preprocesamiento agresivo para mejorar OCR
     return sharp(imageBuffer)
-      .greyscale()
-      .normalize()
-      .sharpen()
+      .resize(2000, 2000, { fit: 'inside', withoutEnlargement: false }) // Escalar a tamaño óptimo
+      .greyscale() // Convertir a escala de grises
+      .normalize() // Normalizar histograma
+      .sharpen({ sigma: 1.5 }) // Aumentar nitidez
+      .linear(1.2, -(128 * 1.2) + 128) // Aumentar contraste
+      .threshold(128) // Binarización para texto más claro
       .toBuffer();
   }
 
