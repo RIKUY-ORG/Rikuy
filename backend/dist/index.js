@@ -44,8 +44,30 @@ const identity_1 = __importDefault(require("./routes/identity"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const logger_1 = __importStar(require("./utils/logger"));
 const app = (0, express_1.default)();
+// CORS configuration
+const allowedOrigins = [
+    'http://localhost:5173', // Local development
+    'http://localhost:3000',
+    'https://rikuy.up.railway.app', // Production frontend
+];
+app.use((0, cors_1.default)({
+    origin: (origin, callback) => {
+        // Allow requests with no origin (mobile apps, Postman, etc.)
+        if (!origin)
+            return callback(null, true);
+        if (allowedOrigins.includes(origin)) {
+            callback(null, true);
+        }
+        else {
+            logger_1.default.warn({ origin }, 'CORS blocked request from unauthorized origin');
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-user-address'],
+}));
 // Middleware global
-app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
 // Rate limiting global (DESACTIVADO temporalmente - requiere Redis)
