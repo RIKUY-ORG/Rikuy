@@ -51,4 +51,17 @@ exports.schemas = {
         category: zod_1.z.number().int().min(0).max(4).optional(),
         limit: zod_1.z.number().int().positive().max(100).optional(),
     }),
+    verifyIdentity: zod_1.z.object({
+        documentType: zod_1.z.enum(['CI', 'PASSPORT']),
+        documentNumber: zod_1.z.string().min(7).max(15),
+        expedition: zod_1.z.string().length(2).optional(),
+        firstName: zod_1.z.string().min(2).max(50),
+        lastName: zod_1.z.string().min(2).max(50),
+        dateOfBirth: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        userAddress: zod_1.z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
+    }),
+    revokeIdentity: zod_1.z.object({
+        identityCommitment: zod_1.z.string().regex(/^0x[a-fA-F0-9]{64}$/),
+        reason: zod_1.z.string().min(10).max(500),
+    }),
 };

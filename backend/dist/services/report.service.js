@@ -8,6 +8,7 @@ const ipfs_service_1 = require("./ipfs.service");
 const ai_service_1 = require("./ai.service");
 const arkiv_service_1 = require("./arkiv.service");
 const relayer_service_1 = require("./relayer.service");
+const semaphore_service_1 = require("./semaphore.service");
 const logger_1 = require("../utils/logger");
 const errors_1 = require("../utils/errors");
 const crypto_1 = __importDefault(require("crypto"));
@@ -17,6 +18,16 @@ class ReportRelayerService {
         const startTime = Date.now();
         try {
             logger.info('Starting report creation with relayer');
+            logger.info('Step 0: Verifying ZK proof');
+            const proofResult = await semaphore_service_1.semaphoreService.verifyProof(request.zkProof);
+            if (!proofResult.isValid) {
+                throw new Error(`Invalid ZK proof: ${proofResult.error}`);
+            }
+            const nullifierUsed = await semaphore_service_1.semaphoreService.isNullifierUsed(proofResult.nullifier);
+            if (nullifierUsed) {
+                throw new Error('This proof has already been used');
+            }
+            logger.info({ nullifier: proofResult.nullifier }, 'ZK proof verified successfully');
             this.validateLocation(request.location);
             logger.info('Step 1: Uploading image to IPFS');
             const { ipfsHash, url: imageUrl, fileHash } = await ipfs_service_1.ipfsService.uploadImage(request.photo);

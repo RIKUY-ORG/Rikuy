@@ -20,9 +20,10 @@ exports.config = {
         jwt: process.env.PINATA_JWT,
         gateway: process.env.PINATA_GATEWAY || 'https://gateway.pinata.cloud',
     },
-    // OpenAI
-    openai: {
-        apiKey: process.env.OPENAI_API_KEY,
+    // AI Vision
+    ai: {
+        geminiApiKey: process.env.GEMINI_API_KEY,
+        openaiApiKey: process.env.OPENAI_API_KEY,
     },
     // Blockchain (Scroll)
     blockchain: {
@@ -59,7 +60,7 @@ exports.config = {
 const requiredEnvVars = [
     'ARKIV_PRIVATE_KEY',
     'PINATA_JWT',
-    'OPENAI_API_KEY',
+    'GEMINI_API_KEY',
     'RELAYER_PRIVATE_KEY',
     'RIKUY_CORE_V2_ADDRESS',
     'SEMAPHORE_ADAPTER_ADDRESS',
