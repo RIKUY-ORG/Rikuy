@@ -5,7 +5,7 @@
 export interface SemaphoreIdentity {
   commitment: string;
   secret: string;
-  nullifier: string;
+  nullifier?: string; // Optional - solo disponible después de generar proof
 }
 
 export interface ZKProof {

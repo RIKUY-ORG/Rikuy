@@ -74,7 +74,6 @@ export function useIdentity() {
       return {
         commitment: newIdentity.commitment.toString(),
         secret: newIdentity.toString(),
-        nullifier: newIdentity.nullifier.toString(),
       };
     } catch (err) {
       console.error('Error generating identity:', err);
