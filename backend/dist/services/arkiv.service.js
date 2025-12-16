@@ -1,10 +1,39 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.arkivService = void 0;
-const sdk_1 = require("@arkiv-network/sdk");
-const accounts_1 = require("@arkiv-network/sdk/accounts");
-const utils_1 = require("@arkiv-network/sdk/utils");
-const query_1 = require("@arkiv-network/sdk/query");
 const config_1 = require("../config");
 // Mendoza testnet configuration
 const mendoza = {
@@ -24,28 +53,51 @@ const mendoza = {
 /**
  * Servicio para interactuar con Arkiv (storage inmutable)
  * Implementación oficial basada en Arkiv SDK
+ * Usa dynamic imports para evitar conflictos ES/CommonJS
  */
 class ArkivService {
     publicClient;
     walletClient;
     account;
+    sdkPromise;
     constructor() {
-        // Setup account
-        this.account = (0, accounts_1.privateKeyToAccount)(config_1.config.arkiv.privateKey);
-        // Cliente público (para queries)
-        this.publicClient = (0, sdk_1.createPublicClient)({
-            chain: mendoza,
-            transport: (0, sdk_1.http)(),
-        });
-        // Wallet client (para writes) - autenticado
-        this.walletClient = (0, sdk_1.createWalletClient)({
-            chain: mendoza,
-            transport: (0, sdk_1.http)(),
-            account: this.account,
-        });
-        console.log('[Arkiv] Service initialized');
-        console.log('[Arkiv] Chain:', mendoza.name);
-        console.log('[Arkiv] Account:', this.account.address);
+        // Lazy load SDK usando dynamic import
+        this.sdkPromise = this.initializeSDK();
+    }
+    async initializeSDK() {
+        try {
+            const [{ createPublicClient, createWalletClient, http }, { privateKeyToAccount }] = await Promise.all([
+                Promise.resolve().then(() => __importStar(require('@arkiv-network/sdk'))),
+                Promise.resolve().then(() => __importStar(require('@arkiv-network/sdk/accounts')))
+            ]);
+            // Setup account
+            this.account = privateKeyToAccount(config_1.config.arkiv.privateKey);
+            // Cliente público (para queries)
+            this.publicClient = createPublicClient({
+                chain: mendoza,
+                transport: http(),
+            });
+            // Wallet client (para writes) - autenticado
+            this.walletClient = createWalletClient({
+                chain: mendoza,
+                transport: http(),
+                account: this.account,
+            });
+            console.log('[Arkiv] Service initialized');
+            console.log('[Arkiv] Chain:', mendoza.name);
+            console.log('[Arkiv] Account:', this.account.address);
+            return true;
+        }
+        catch (error) {
+            console.error('[Arkiv] Failed to initialize SDK:', error);
+            throw error;
+        }
+    }
+    // Helper para lazy-load query utils
+    async loadQueryUtils() {
+        await this.sdkPromise;
+        const { eq } = await Promise.resolve().then(() => __importStar(require('@arkiv-network/sdk/query')));
+        return { eq };
     }
     /**
      * Guardar reporte completo en Arkiv
@@ -53,9 +105,13 @@ class ArkivService {
      */
     async storeReport(reportData) {
         try {
+            // Esperar a que el SDK se inicialice
+            await this.sdkPromise;
             console.log(`[Arkiv] Storing report: ${reportData.reportId}`);
+            // Dynamic import de utils
+            const { jsonToPayload, ExpirationTime } = await Promise.resolve().then(() => __importStar(require('@arkiv-network/sdk/utils')));
             // Convertir datos a payload JSON
-            const payload = (0, utils_1.jsonToPayload)(reportData);
+            const payload = jsonToPayload(reportData);
             // Crear payload con attributes queryables
             const createPayload = {
                 payload,
@@ -69,7 +125,7 @@ class ArkivService {
                     { key: 'protocol', value: 'rikuy-v1' },
                 ],
                 // Los reportes expiran en 10 años (prácticamente permanentes)
-                expiresIn: utils_1.ExpirationTime.fromYears(10),
+                expiresIn: ExpirationTime.fromYears(10),
             };
             // Escribir a Arkiv usando mutateEntities
             const result = await this.walletClient.mutateEntities({
@@ -93,11 +149,13 @@ class ArkivService {
      */
     async getReport(reportId) {
         try {
+            await this.sdkPromise;
+            const { eq } = await this.loadQueryUtils();
             console.log(`[Arkiv] Fetching report: ${reportId}`);
             // Construir query con filtro por reportId
             const query = this.publicClient.buildQuery();
             const result = await query
-                .where((0, query_1.eq)('reportId', reportId))
+                .where(eq('reportId', reportId))
                 .withPayload(true)
                 .fetch();
             if (!result.entities || result.entities.length === 0) {
@@ -121,6 +179,8 @@ class ArkivService {
      */
     async getNearbyReports(lat, long, radiusKm, limit = 50) {
         try {
+            await this.sdkPromise;
+            const { eq } = await this.loadQueryUtils();
             console.log(`[Arkiv] Querying nearby reports (${lat}, ${long}) within ${radiusKm}km`);
             // Calcular bounding box
             const latDelta = radiusKm / 111; // aprox km por grado de latitud
@@ -136,7 +196,7 @@ class ArkivService {
             // Alternativa: fetch todos los reportes y filtrar en memoria
             const query = this.publicClient.buildQuery();
             const result = await query
-                .where((0, query_1.eq)('protocol', 'rikuy-v1'))
+                .where(eq('protocol', 'rikuy-v1'))
                 .withPayload(true)
                 .fetch();
             if (!result.entities || result.entities.length === 0) {
@@ -174,11 +234,13 @@ class ArkivService {
      */
     async getReportsByCategory(category, limit = 50) {
         try {
+            await this.sdkPromise;
+            const { eq } = await this.loadQueryUtils();
             console.log(`[Arkiv] Fetching reports by category: ${category}`);
             const query = this.publicClient.buildQuery();
             const result = await query
-                .where((0, query_1.eq)('category', category.toString()))
-                .where((0, query_1.eq)('protocol', 'rikuy-v1'))
+                .where(eq('category', category.toString()))
+                .where(eq('protocol', 'rikuy-v1'))
                 .withPayload(true)
                 .fetch();
             if (!result.entities || result.entities.length === 0) {
@@ -200,10 +262,12 @@ class ArkivService {
      */
     async getRecentReports(limit = 20) {
         try {
+            await this.sdkPromise;
+            const { eq } = await this.loadQueryUtils();
             console.log(`[Arkiv] Fetching ${limit} recent reports`);
             const query = this.publicClient.buildQuery();
             const result = await query
-                .where((0, query_1.eq)('protocol', 'rikuy-v1'))
+                .where(eq('protocol', 'rikuy-v1'))
                 .withPayload(true)
                 .fetch();
             if (!result.entities || result.entities.length === 0) {
@@ -242,9 +306,11 @@ class ArkivService {
      */
     async healthCheck() {
         try {
+            await this.sdkPromise;
+            const { eq } = await this.loadQueryUtils();
             // Intentar hacer una query simple
             const query = this.publicClient.buildQuery();
-            await query.where((0, query_1.eq)('protocol', 'rikuy-v1')).fetch();
+            await query.where(eq('protocol', 'rikuy-v1')).fetch();
             return true;
         }
         catch (error) {

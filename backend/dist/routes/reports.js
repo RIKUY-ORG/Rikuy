@@ -3,14 +3,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const report_service_1 = require("../services/report.service");
 const upload_1 = require("../middleware/upload");
-const rateLimit_1 = require("../middleware/rateLimit");
 const validation_1 = require("../middleware/validation");
 const router = (0, express_1.Router)();
 /**
  * POST /api/reports
  * Crear nuevo reporte (ENDPOINT PRINCIPAL)
  */
-router.post('/', rateLimit_1.reportRateLimiter, upload_1.upload.single('photo'), async (req, res) => {
+router.post('/', 
+// reportRateLimiter, // DESACTIVADO temporalmente - requiere Redis
+upload_1.upload.single('photo'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({

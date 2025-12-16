@@ -40,7 +40,7 @@ const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const config_1 = require("./config");
 const reports_1 = __importDefault(require("./routes/reports"));
-const rateLimit_1 = require("./middleware/rateLimit");
+const identity_1 = __importDefault(require("./routes/identity"));
 const errorHandler_1 = require("./middleware/errorHandler");
 const logger_1 = __importStar(require("./utils/logger"));
 const app = (0, express_1.default)();
@@ -48,8 +48,8 @@ const app = (0, express_1.default)();
 app.use((0, cors_1.default)());
 app.use(express_1.default.json());
 app.use(express_1.default.urlencoded({ extended: true }));
-// Rate limiting global
-app.use(rateLimit_1.rateLimiter);
+// Rate limiting global (DESACTIVADO temporalmente - requiere Redis)
+// app.use(rateLimiter);
 // Health check
 app.get('/health', (req, res) => {
     res.json({
@@ -68,6 +68,7 @@ app.use((req, res, next) => {
     next();
 });
 // Routes
+app.use('/api/identity', identity_1.default);
 app.use('/api/reports', reports_1.default);
 // 404 handler (rutas no encontradas) - DESPUÉS de todas las rutas
 app.use(errorHandler_1.notFoundHandler);
