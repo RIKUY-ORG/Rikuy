@@ -29,6 +29,17 @@ function App() {
       <Route element={<IndexPage />} path="/" />
       <Route element={<MetricsFullPage />} path="/mapa" />
       <Route element={<AboutPage />} path="/sobre-nosotros" />
+      <Route element={<ComoFuncionaPage />} path="/como-funciona" />
+      <Route element={<PrivacidadPage />} path="/privacidad" />
+      <Route element={<TerminosPage />} path="/terminos" />
+      <Route element={<ContactoPage />} path="/contacto" />
+      <Route element={<ComunidadesPage />} path="/comunidades" />
+      <Route element={<TutorialPage />} path="/tutorial" />
+      <Route element={<AyudaPage />} path="/ayuda" />
+      <Route element={<SoportePage />} path="/soporte" />
+      <Route element={<LoginPage />} path="/login" />
+      {/* NUEVA: Ruta de verificación de identidad */}
+      <Route element={<VerificarIdentidadPage />} path="/verificar-identidad" />
 
       {/* Rutas de Denuncia - PROTEGIDAS (requieren verificación) */}
       <Route
@@ -64,21 +75,10 @@ function App() {
         path="/denunciar/audio"
       />
 
-      <Route element={<ComoFuncionaPage />} path="/como-funciona" />
-      <Route element={<PrivacidadPage />} path="/privacidad" />
-      <Route element={<TerminosPage />} path="/terminos" />
-      <Route element={<ContactoPage />} path="/contacto" />
-      <Route element={<ComunidadesPage />} path="/comunidades" />
-      <Route element={<TutorialPage />} path="/tutorial" />
-      <Route element={<AyudaPage />} path="/ayuda" />
-      <Route element={<SoportePage />} path="/soporte" />
-      <Route element={<LoginPage />} path="/login" />
 
       {/* Protegidas (por ahora públicas, luego las envolvemos con ProtectedRoute) */}
       <Route element={<PerfilPage />} path="/perfil" />
 
-      {/* NUEVA: Ruta de verificación de identidad */}
-      <Route element={<VerificarIdentidadPage />} path="/verificar-identidad" />
 
       {/* NUEVA: Página de éxito después de crear denuncia */}
       <Route element={<DenunciaExitosaPage />} path="/denuncia-exitosa" />
