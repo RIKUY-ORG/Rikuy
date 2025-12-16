@@ -74,7 +74,7 @@ export class BlockchainRelayerService {
     // Inicializar contrato RikuyCoreV2
     this.rikuyCore = new ethers.Contract(
       config.blockchain.contracts.rikuyCoreV2,
-      RikuyCoreV2ABI,
+      RikuyCoreV2ABI.abi,
       this.relayerWallet // Conectado con wallet que firma
     );
 
