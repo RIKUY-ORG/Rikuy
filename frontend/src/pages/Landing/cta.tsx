@@ -6,7 +6,7 @@ import { button as buttonStyles } from "@heroui/theme";
 import { usePrivy } from "@privy-io/react-auth";
 
 export function CTA() {
-  const { authenticated, login, ready } = usePrivy();
+  const { authenticated, login } = usePrivy();
   const { isVerified, isLoading } = useIdentityStatus();
 
   return (

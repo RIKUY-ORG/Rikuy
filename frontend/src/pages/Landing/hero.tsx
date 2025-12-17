@@ -8,7 +8,7 @@ import { useIdentityStatus } from "@/hooks/useIdentityStatus";
 import { DenunciarButton } from "@/components/denunciarButton";
 
 export function Hero({ config }: { config: HeroConfig }) {
-  const { authenticated, login, ready } = usePrivy();
+  const { authenticated, login } = usePrivy();
   const { isVerified, isLoading } = useIdentityStatus();
 
 
