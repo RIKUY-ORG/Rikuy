@@ -132,11 +132,11 @@ export default function VerificarIdentidadPage() {
 
     try {
       const formData = new FormData();
+      formData.append('firstName', firstName);
+      formData.append('lastName', lastName);
       formData.append('documentImage', documentImage);
       formData.append('documentType', 'CI');
       formData.append('documentNumber', documentNumber);
-      formData.append('firstName', firstName);
-      formData.append('lastName', lastName);
       formData.append('dateOfBirth', dateOfBirth);
       formData.append('expedition', expedition);
       formData.append('userAddress', user.wallet.address);
