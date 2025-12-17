@@ -3,6 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
+import { SEMAPHORE_CONFIG } from '@/config/semaphore';
 
 interface IdentityStatus {
   isVerified: boolean;
@@ -38,7 +39,7 @@ export function useIdentityStatus() {
       try {
         setStatus(prev => ({ ...prev, isLoading: true, error: null }));
 
-        const url = `${import.meta.env.VITE_BACKEND_API_URL}/api/identity/status?userAddress=${user.wallet.address}`;
+        const url = `${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/identity/status?userAddress=${user.wallet.address}`;
         console.log('[useIdentityStatus] Fetching:', url);
 
         const response = await fetch(url, {

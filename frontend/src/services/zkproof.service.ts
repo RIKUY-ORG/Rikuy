@@ -6,7 +6,7 @@ import { Identity } from '@semaphore-protocol/identity';
 // @ts-ignore - La generación de proofs requiere módulos WASM que TypeScript no puede inferir
 import { generateProof } from '@semaphore-protocol/core';
 import { SEMAPHORE_CONFIG } from '@/config/semaphore';
-import type { ZKProof, ReportZKProof } from '@/types/semaphore';
+import type { ReportZKProof } from '@/types/semaphore';
 
 export class ZKProofService {
   /**
@@ -17,37 +17,27 @@ export class ZKProofService {
    * @returns ZK Proof en formato Rikuy
    */
   static async generateReportProof(
-    identity: Identity,
+    _identity: Identity, // eslint-disable-line @typescript-eslint/no-unused-vars
     reportHash: string,
     scope: string = 'rikuy-reports'
   ): Promise<ReportZKProof> {
     try {
-      const groupId = SEMAPHORE_CONFIG.GROUP_ID;
+      // TODO: Actualizar cuando el backend esté listo con el endpoint de proofs
+      // Por ahora, retornamos datos mock para permitir desarrollo
+      console.warn('ZK Proof generation is mocked - backend integration pending');
 
-      // Obtener merkle tree root del backend
-      const merkleTreeRoot = await this.getMerkleTreeRoot();
-
-      // Generar proof usando Semaphore
-      // IMPORTANTE: Este paso requiere los archivos WASM y zkey del circuit
-      // En producción, estos archivos deben estar en /public/semaphore/
-      const fullProof = await generateProof(identity, {
-        externalNullifier: scope,
-        signal: reportHash,
-        merkleTreeRoot,
-      });
-
-      // Convertir el proof al formato esperado por RikuyCoreV2
-      const zkProof: ReportZKProof = {
-        proof: this.flattenProof(fullProof.proof),
+      // Mock proof para desarrollo
+      const mockProof: ReportZKProof = {
+        proof: new Array(8).fill('0x0'),
         publicSignals: {
-          nullifier: fullProof.nullifier.toString(),
-          merkleTreeRoot: merkleTreeRoot,
+          nullifier: '0',
+          merkleTreeRoot: '0',
           message: reportHash,
           scope: scope,
         },
       };
 
-      return zkProof;
+      return mockProof;
     } catch (error) {
       console.error('Error generating ZK proof:', error);
       throw new Error('Failed to generate ZK proof. Please try again.');
@@ -58,8 +48,9 @@ export class ZKProofService {
    * Convertir proof Groth16 a formato plano [8 elementos]
    * @param proof Proof de Semaphore
    * @returns Array de 8 strings
+   * TODO: Reactivar cuando se implemente la generación real de proofs
    */
-  private static flattenProof(proof: any): string[] {
+  /* private static flattenProof(proof: any): string[] {
     // Semaphore usa formato Groth16: { pi_a, pi_b, pi_c }
     // Necesitamos convertir a [pA[2], pB[4], pC[2]]
     return [
@@ -72,13 +63,14 @@ export class ZKProofService {
       proof.pi_c[0],
       proof.pi_c[1],
     ];
-  }
+  } */
 
   /**
    * Obtener el merkle tree root actual del grupo Semaphore
    * @returns Merkle tree root como string
+   * TODO: Reactivar cuando se implemente la generación real de proofs
    */
-  private static async getMerkleTreeRoot(): Promise<string> {
+  /* private static async getMerkleTreeRoot(): Promise<string> {
     try {
       const response = await fetch(
         `${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/identity/merkle-root`,
@@ -106,7 +98,7 @@ export class ZKProofService {
       }
       throw error;
     }
-  }
+  } */
 
   /**
    * Calcular hash de un reporte para usar como mensaje
@@ -114,15 +106,15 @@ export class ZKProofService {
    * @returns Hash del reporte
    */
   static async hashReportData(reportData: {
-    arkivTxId: string;
     category: number;
     timestamp: number;
+    location?: { lat: number; long: number; accuracy: number };
   }): Promise<string> {
     // Crear un string determinístico con los datos del reporte
     const dataString = JSON.stringify({
-      arkivTxId: reportData.arkivTxId,
       category: reportData.category,
       timestamp: reportData.timestamp,
+      location: reportData.location,
     });
 
     // Calcular hash usando Web Crypto API

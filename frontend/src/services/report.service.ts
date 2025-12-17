@@ -5,7 +5,6 @@
 import { SEMAPHORE_CONFIG, CATEGORIES } from '@/config/semaphore';
 import { ZKProofService } from './zkproof.service';
 import type { Identity } from '@semaphore-protocol/identity';
-import type { ReportZKProof } from '@/types/semaphore';
 
 export interface CreateReportData {
   photo: File;

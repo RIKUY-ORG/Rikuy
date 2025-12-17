@@ -8,6 +8,7 @@ import { addToast } from "@heroui/toast";
 import { Button } from "@heroui/button";
 import { usePrivy } from "@privy-io/react-auth";
 import { Identity } from "@semaphore-protocol/core";
+import { SEMAPHORE_CONFIG } from "@/config/semaphore";
 
 const videoConstraints = {
   width: 1280,
@@ -128,7 +129,7 @@ export default function PhotoPage() {
 
       // Paso 5: Enviar al backend
       setUploadStatus("Subiendo a IPFS, Arkiv y Blockchain...");
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/api/reports`, {
+      const response = await fetch(`${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/reports`, {
         method: 'POST',
         body: formData,
       });
