@@ -3,8 +3,15 @@ import { Link } from "@heroui/link";
 import { button as buttonStyles } from "@heroui/theme";
 import { RikuyLogo } from "@/components/rikuyLogo";
 import { HeroConfig } from "@/config/landing/types";
+import { usePrivy } from "@privy-io/react-auth";
+import { useIdentityStatus } from "@/hooks/useIdentityStatus";
+import { DenunciarButton } from "@/components/denunciarButton";
 
 export function Hero({ config }: { config: HeroConfig }) {
+  const { authenticated, login, ready } = usePrivy();
+  const { isVerified, isLoading } = useIdentityStatus();
+
+
   return (
     <section
       className="
@@ -26,7 +33,7 @@ export function Hero({ config }: { config: HeroConfig }) {
       </div>
 
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <Link
+        {/* <Link
           href={config.primaryCta.href}
           className={buttonStyles({
             color: "primary",
@@ -36,7 +43,13 @@ export function Hero({ config }: { config: HeroConfig }) {
           })}
         >
           {config.primaryCta.label}
-        </Link>
+        </Link> */}
+        <DenunciarButton
+          authenticated={authenticated}
+          isVerified={isVerified}
+          isLoading={isLoading}
+          login={login}
+        />
         {config.secondaryCta && (
           <Link
             href={config.secondaryCta.href}
