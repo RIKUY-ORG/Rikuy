@@ -2,7 +2,6 @@ import { Link } from "@heroui/link";
 import { button as buttonStyles } from "@heroui/theme";
 import DefaultLayout from "@/layouts/default";
 import { RikuyLogo } from "@/components/rikuyLogo";
-import QuienesUsan from "./quienesUsan";
 import { usePrivy } from "@privy-io/react-auth";
 import { useIdentityStatus } from "@/hooks/useIdentityStatus";
 import { Tooltip } from "@heroui/tooltip";
@@ -166,7 +165,6 @@ export default function IndexPage() {
           </li>
         </ul>
       </section> */}
-      <QuienesUsan />
     </DefaultLayout>
   );
 }
