@@ -17,6 +17,7 @@
     "@heroui/card": "^2.2.25",
     "@heroui/code": "2.2.21",
     "@heroui/date-picker": "^2.3.29",
+    "@heroui/drawer": "^2.2.25",
     "@heroui/dropdown": "2.3.27",
     "@heroui/input": "2.4.28",
     "@heroui/kbd": "2.2.22",
