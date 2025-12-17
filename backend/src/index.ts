@@ -9,8 +9,31 @@ import logger, { logRequest } from './utils/logger';
 
 const app = express();
 
+// CORS configuration
+const allowedOrigins = [
+  'http://localhost:5173', // Local development
+  'http://localhost:3000',
+  'https://rikuy.up.railway.app', // Production frontend
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      logger.warn({ origin }, 'CORS blocked request from unauthorized origin');
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-user-address'],
+}));
+
 // Middleware global
-app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

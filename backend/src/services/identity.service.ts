@@ -35,11 +35,39 @@ class IdentityService {
 
       await this.validateImageQuality(request.documentImage.buffer);
 
-      const extracted = request.documentType === DocumentType.CI
-        ? await ocrService.extractBolivianCI(request.documentImage.buffer)
-        : await ocrService.extractBolivianPassport(request.documentImage.buffer);
+      // Intentar OCR pero no es obligatorio - usamos datos del formulario
+      let extracted = null;
+      try {
+        extracted = request.documentType === DocumentType.CI
+          ? await ocrService.extractBolivianCI(request.documentImage.buffer)
+          : await ocrService.extractBolivianPassport(request.documentImage.buffer);
 
-      this.validateExtractedData(extracted, request);
+        // Si OCR funciona, validamos coincidencia
+        this.validateExtractedData(extracted, request);
+        logger.info({ ocrSuccess: true }, 'OCR extraction successful');
+      } catch (ocrError: any) {
+        // OCR falló, usamos datos del formulario directamente
+        logger.warn({ error: ocrError.message }, 'OCR failed, using manual data from form');
+      }
+
+      // Validar formato del CI boliviano
+      if (request.documentType === DocumentType.CI) {
+        const validation = this.validateBolivianCI(request.documentNumber, request.expedition || 'LP');
+        if (!validation.isValid) {
+          throw new Error(validation.error || 'CI inválido');
+        }
+      }
+
+      // Validar datos básicos del formulario
+      if (!request.firstName || request.firstName.length < 2) {
+        throw new Error('Nombre inválido');
+      }
+      if (!request.lastName || request.lastName.length < 2) {
+        throw new Error('Apellido inválido');
+      }
+      if (!request.dateOfBirth) {
+        throw new Error('Fecha de nacimiento requerida');
+      }
 
       const existingIdentity = this.findIdentityByDocument(request.documentNumber);
       if (existingIdentity) {

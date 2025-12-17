@@ -6,16 +6,17 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePrivy } from '@privy-io/react-auth';
-import DefaultLayout from '@/layouts/default';
 import { addToast } from '@heroui/toast';
 import { Button } from '@heroui/button';
 import { DatePicker } from "@heroui/date-picker";
 import { Card, CardBody, CardHeader } from '@heroui/card';
+import DefaultLayout from '@/layouts/default';
 import { Input } from '@heroui/input';
+import { I18nProvider } from '@react-aria/i18n';
+import { today, getLocalTimeZone } from "@internationalized/date";
 import { Select, SelectItem } from "@heroui/select";
 import DragDropFile from '@/components/drag&dropFile';
-import { I18nProvider } from "@react-aria/i18n";
-import { today, getLocalTimeZone } from "@internationalized/date";
+import { SEMAPHORE_CONFIG } from '@/config/semaphore';
 
 export default function VerificarIdentidadPage() {
   const navigate = useNavigate();
@@ -142,7 +143,7 @@ export default function VerificarIdentidadPage() {
       formData.append('userAddress', user.wallet.address);
 
       const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_API_URL}/api/identity/verify`,
+        `${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/identity/verify`,
         {
           method: 'POST',
           body: formData,
