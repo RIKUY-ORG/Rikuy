@@ -1,989 +1,456 @@
-# RIKUY 🌎
+# Rikuy - Sistema de Denuncias Ciudadanas Anónimas
 
-### *"La única manera de derrotar al silencio es hacer imposible el olvido"*
+Plataforma descentralizada para reportes ciudadanos anónimos con verificación de identidad y almacenamiento permanente en blockchain.
 
-**La primera plataforma donde denunciar corrupción, narcotráfico y crimen organizado te paga, te protege, y nunca puede ser borrada.**
+## Tabla de Contenidos
 
-[![Scroll](https://img.shields.io/badge/Scroll-Sepolia-orange)](https://sepolia.scrollscan.com/)
-[![Arkiv](https://img.shields.io/badge/Arkiv-Mendoza-blue)](https://arkiv.network/)
-[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-
-📍 **Deployment**: Scroll Sepolia + Arkiv Mendoza
-
----
-
-## 💔 El Problema Que Nadie Se Atreve a Enfrentar
-
-En Latinoamérica, **el silencio mata más que las balas.**
-
-Cada día, miles de personas son testigos de:
-- 💊 **Narcotráfico** vendiendo droga a niños frente a escuelas
-- 🔫 **Pandillas** extorsionando negocios locales
-- 💰 **Corrupción política** desviando millones en obras fantasma
-- 👮 **Policías corruptos** protegiendo criminales
-
-**¿Por qué nadie denuncia?**
-
-```
-Porque denunciar = muerte
-
-Juan ve narcos → Llama al 911 → Policía corrupto alerta a narcos
-                                           ↓
-                              Narcos averiguan quién fue
-                                           ↓
-                              Juan desaparece
-```
-
-**El resultado:**
-- 😰 **95% de los crímenes no se reportan** por miedo
-- 🗑️ **Los reportes que llegan se borran** (corrupción)
-- 💀 **Testigos protegidos terminan muertos**
-- 🔇 **Las comunidades viven en silencio**
-
-> *En El Alto, Bolivia, una madre vio cómo mataron a su hijo de 16 años por una deuda de droga de $20 USD. Sabía quiénes fueron. Nunca denunció. "Si hablo, matan a mis otros hijos", dijo.*
-
-**Esto tiene que terminar.**
+- [Visión General](#visión-general)
+- [Smart Contracts (Scroll Sepolia)](#smart-contracts-scroll-sepolia)
+- [Arquitectura del Sistema](#arquitectura-del-sistema)
+- [Stack Tecnológico](#stack-tecnológico)
+- [Estado del Desarrollo](#estado-del-desarrollo)
+- [Instalación y Configuración](#instalación-y-configuración)
 
 ---
 
-## 🛡️ La Solución: RIKUY
+## Visión General
 
-**RIKUY es la única plataforma donde puedes denunciar crimen organizado de forma 100% anónima, inmutable, y ser recompensado por ello.**
+Rikuy es un sistema que permite a ciudadanos reportar incidentes de forma completamente anónima mientras mantiene verificación de identidad mediante Zero-Knowledge Proofs (ZKP). El sistema garantiza:
 
-### Lo que hace diferente a RIKUY:
+- **Anonimato total**: Los reportes no pueden vincularse a la identidad del reportante
+- **Verificación de identidad**: Solo usuarios verificados pueden crear reportes
+- **Inmutabilidad**: Evidencia almacenada permanentemente en IPFS y Arkiv
+- **Transparencia**: Todas las transacciones registradas en blockchain público
 
-✅ **Anonimato Real**
-   Tu identidad nunca se revela. Ni siquiera nosotros sabemos quién eres.
+### Flujo de Usuario
 
-✅ **Evidencia Inmutable**
-   Una vez que subes una denuncia, **nadie puede borrarla**. Ni policías, ni gobiernos, ni hackers.
-
-✅ **Recompensas en Dinero Real**
-   Ganas $50-$200 USD por cada denuncia verificada. En tu wallet, sin intermediarios.
-
-✅ **Gasless + Privado**
-   No pagas comisiones. No dejas rastro. No necesitas entender crypto.
-
----
-
-## 🎭 La Historia de Juan (La Real)
-
-### 🚨 **23:30 hrs - Villa Adela, El Alto, Bolivia**
-
-Juan llega de trabajar. Frente a su casa, ve a **Los Halcones** (pandilla local) vendiendo cocaína a menores de edad. Uno de ellos tiene 14 años - va a la escuela con su hija.
-
-**En el sistema tradicional:**
-
-```
-📱 Juan toma foto con su celular
-      ↓
-🤔 Piensa: "¿A quién la envío?"
-      ↓
-❌ Policía local = corrupta (reciben $500/mes de Los Halcones)
-❌ Facebook = Los Halcones tienen gente infiltrada
-❌ Gobierno = No tiene presencia en la zona
-      ↓
-🗑️ Juan borra la foto
-      ↓
-💀 Los Halcones siguen vendiendo
-      ↓
-🔁 Nada cambia. El silencio gana.
-```
-
-**Juan nunca denunció. Su hija sigue pasando frente a los narcos cada día.**
+1. Usuario verifica su identidad (una sola vez)
+2. Sistema genera identity commitment para Semaphore
+3. Usuario captura evidencia fotográfica del incidente
+4. Backend analiza la imagen con IA (moderación de contenido)
+5. Imagen se sube a IPFS (Pinata) y Arkiv (almacenamiento permanente)
+6. Usuario genera ZK proof de su identidad verificada
+7. Reporte se registra en blockchain con proof anónimo
+8. Comunidad valida la autenticidad del reporte
+9. Gobierno aprueba y libera recompensas
 
 ---
 
-### ✨ **La misma noche, pero Juan tiene RIKUY:**
+## Smart Contracts (Scroll Sepolia)
 
-```
-📱 Juan abre RIKUY (app en su celular)
-      ↓
-📸 Toma foto de Los Halcones vendiendo droga
-      ↓
-🔐 RIKUY hace la magia:
+Todos los contratos están deployados en **Scroll Sepolia Testnet** (Chain ID: 534351).
 
-    [1] LIMPIA LA FOTO
-        • Elimina metadatos (ubicación GPS exacta, marca del celular, hora)
-        • Difumina rostros inocentes (solo deja a los criminales)
-        • Remueve identificadores únicos de la cámara
+### Contratos Principales
 
-    [2] ANONIMIZA A JUAN
-        • Zero-Knowledge Proof demuestra: "Soy ciudadano boliviano"
-        • NO revela: nombre, teléfono, IP, ubicación exacta
-        • Solo dice: "Zona Villa Adela, ±200m"
+#### RikuyCoreV2 (Proxy UUPS)
+**Dirección**: `0xEaa6cB7Fa8BEBEa72c78fAd2170b103aC1C2F126`
 
-    [3] SUBE A BLOCKCHAIN
-        • Evidencia → IPFS (descentralizado, permanente)
-        • Metadata → Arkiv (inmutable, nadie puede borrar)
-        • Registro → Scroll (blockchain pública)
+Contrato principal que coordina toda la lógica de negocio. Implementa:
 
-    [4] ANÁLISIS AUTOMÁTICO (IA)
-        • GPT-4 Vision: "Actividad sospechosa.
-          Grupo de personas. Intercambio de objetos pequeños.
-          Hora: noche. Severidad: ALTA"
-        • Categoría: Narcotráfico
-        • Prioridad: Urgente
-      ↓
+- **Relayer Pattern**: Backend firma transacciones en nombre del usuario (gasless)
+- **ZK Proof Verification**: Verifica proofs de Semaphore para anonimato
+- **Workflow de Validación**: Sistema de upvotes/downvotes comunitarios
+- **Access Control**: Roles para admin, operadores, gobierno y relayer
 
-👥 VALIDACIÓN COMUNITARIA
-    • 7 vecinos de Villa Adela ven el reporte (anónimo)
-    • "¿Es esto real?" → 6 votan SÍ, 1 vota NO
-    • Reporte marcado como VERIFICADO
-      ↓
+\`\`\`solidity
+// Funciones principales
+function createReport(
+    bytes32 arkivTxId,      // Hash de evidencia en Arkiv
+    uint16 categoryId,      // Categoría del incidente
+    uint256[8] zkProof,     // Groth16 proof
+    uint256[4] pubSignals   // [nullifier, merkleRoot, message, scope]
+) external onlyRole(RELAYER_ROLE) returns (bytes32 reportId)
 
-🏛️ ALERTAS AUTOMÁTICAS
+function validateReport(
+    bytes32 reportId,
+    bool isValid
+) external
 
-    → Gobierno Central (Bolivia):
-       "67 reportes de narcotráfico en Villa Adela (último mes)
-        Zona crítica. Requiere intervención inmediata."
+function resolveReport(
+    bytes32 reportId,
+    bool approved
+) external onlyRole(GOVERNMENT_ROLE)
+\`\`\`
 
-    → Policía Antinarcóticos:
-       "Hotspot detectado: Calle Los Andes esquina Murillo
-        Horario: 20:00-02:00 hrs. Patrón: Viernes-Sábado
-        Validación comunitaria: 89% confirmado"
-
-    → ONG de DDHH:
-       "Nuevas evidencias de narcotráfico.
-        Disponible para investigación."
-      ↓
-
-✅ GOBIERNO APRUEBA ACCIÓN
-    • Envía unidad especial (no policía local corrupta)
-    • Operativo exitoso → 5 arrestos
-    • Droga decomisada: 2kg cocaína
-    • Menores rescatados
-      ↓
-
-💰 RECOMPENSAS (automático vía smart contract)
-
-    Juan recibe:  $2 USD en USX (anónimo, a su wallet)
-    6 validadores: $0.5 USD c/u
-
-    Total distribuido: $2.5 USD
-
-    Juan nunca dio su nombre.
-    Juan nunca reveló su ubicación exacta.
-    Los Halcones JAMÁS sabrán quién fue.
-      ↓
-
-📊 IMPACTO MEDIBLE
-
-    → Antes de RIKUY:
-       0 denuncias en Villa Adela (por miedo)
-
-    → Después de RIKUY:
-       67 denuncias en 30 días
-       89% verificadas por la comunidad
-       3 operativos exitosos
-       $8,400 USD distribuidos a ciudadanos
-```
-
-**Resultado:**
-- ✅ Juan está vivo y seguro
-- ✅ Su hija ya no pasa frente a narcos
-- ✅ La evidencia existe para siempre (periodistas, juicios, investigaciones)
-- ✅ El gobierno tiene datos reales para actuar
-- ✅ Los Halcones ya no controlan la calle
-
-**El silencio se rompió. El olvido ya no es una opción.**
+**Características**:
+- UUPS Upgradeable (puede mejorarse sin cambiar dirección)
+- Emite eventos para indexación off-chain
+- Threshold de validación: 5 votos positivos
+- Integrado con ReportRegistry y Treasury
 
 ---
 
-## 🔐 ¿Cómo Lo Hacemos? (La Tecnología)
+#### ReportRegistry
+**Dirección**: `0xdc3c4c07e4675cf1BBDEa627026e92170f9F5AE1`
 
-### **Filosofía**:
-> *"No necesitas entender blockchain para destruir la impunidad"*
+Storage contract que mantiene el registro de todos los reportes.
 
-Al igual que no necesitas entender criptografía para usar WhatsApp, **no necesitas entender crypto para usar RIKUY**.
+\`\`\`solidity
+struct Report {
+    bytes32 reportId;
+    bytes32 arkivTxId;       // Referencia a evidencia en Arkiv
+    bytes32 nullifier;       // ZK nullifier (unique)
+    uint16 categoryId;
+    uint256 timestamp;
+    uint256 validationScore;
+    bool isResolved;
+}
+\`\`\`
 
----
-
-### 🛠️ **El Stack Tecnológico (y Por Qué Cada Pieza)**
-
-| Tecnología | ¿Qué Hace? | ¿Por Qué La Usamos? |
-|------------|------------|---------------------|
-| **🔵 Scroll L2** | Blockchain de bajo costo | Transacciones 1000x más baratas que Ethereum. Usuarios nunca pagan gas. |
-| **💵 USX (Scroll)** | Stablecoin privada + gasless | **LA CLAVE**: Privacidad ZK + 0 comisiones + 10-15% APY al hacer stake. Spendable vía ether.fi Cash (Q1 2025). *"Crypto que se siente como dinero, pero funciona mejor que dinero."* |
-| **🗄️ Arkiv Network** | Almacenamiento inmutable | Storage permanente. Si subes evidencia de corrupción, **nadie puede borrarla**. Ni en 10, ni en 100 años. |
-| **🔐 Zero-Knowledge Proofs** | Privacidad matemática | Demuestras que eres ciudadano válido **SIN revelar quién eres**. Magia criptográfica. |
-| **🤖 GPT-4 Vision** | Análisis automático de imágenes | Detecta qué hay en la foto (armas, drogas, corrupción) sin intervención humana. Primera línea de defensa contra spam. |
-| **⛽ Account Abstraction (Privy)** | Wallets sin fricción | Login con Google/Email. El usuario ni sabe que está usando blockchain. |
-| **🔒 IPFS (Pinata)** | Storage descentralizado | Imágenes distribuidas en miles de nodos. Imposible de censurar. |
-
----
-
-### 💵 **USX: El Arma Secreta**
-
-**¿Por qué USX y no cualquier otra stablecoin?**
-
-Scroll lanzó USX como el primer "neodollar" con estas características únicas:
-
-#### ✅ **Gasless**
-```
-Usuario reporta corrupción → $0 en fees
-Usuario reclama recompensa → $0 en fees
-Usuario transfiere USX → $0 en fees
-
-¿Quién paga? El Paymaster (gobierno/ONG patrocinador)
-```
-
-#### ✅ **Privado (ZK-Powered)**
-```
-Transacciones usando Scroll Cloak:
-• Nadie ve cuánto recibes
-• Nadie ve cuándo lo gastas
-• Nadie rastrea tu wallet
-
-Vs. Bitcoin/USDT:
-• TODO es público
-• Cualquiera ve tu balance
-• Cualquiera rastrea tus transacciones
-```
-
-#### ✅ **Rentable (10-15% APY)**
-```
-Recibes $100 USD en USX por denunciar
-↓
-Haces stake en ether.fi
-↓
-Ganas $10-15 USD/año automáticamente
-
-Total: $110-115 USD sin hacer nada más
-```
-
-#### ✅ **Spendable (ether.fi Cash - Q1 2025)**
-```
-USX en tu wallet
-↓
-Conectas con ether.fi Cash Card (Visa)
-↓
-Compras en cualquier tienda física/online
-
-La recompensa por tu denuncia → dinero gastable en el mundo real
-```
-
-**Esto es único. Ninguna otra stablecoin tiene estas 4 propiedades juntas.**
-
-**Implementación en RIKUY:**
-```typescript
-// Cuando gobierno aprueba reporte:
-Treasury.releaseReward(reporter_wallet, amount_in_USX)
-  ↓
-• USX transferido con 0 gas fees (Scroll)
-• Transacción privada (Cloak)
-• Usuario puede:
-  1. Gastar vía ether.fi Cash
-  2. Hacer stake para 10-15% APY
-  3. Transferir anónimamente
-  4. Convertir a fiat
-```
+**Categorías de Reportes**:
+- `0`: Infraestructura (baches, alumbrado público, etc.)
+- `1`: Inseguridad (robos, violencia)
+- `2`: Basura y contaminación
+- `3`: Corrupción
+- `4`: Otros
 
 ---
 
-### 🎯 **¿Por Qué Esto Funciona Contra la Corrupción?**
+#### Treasury
+**Dirección**: `0xb53cd2E6a71E88C4Df5863CD8c257077cD8C1aa2`
 
-#### 1️⃣ **Anonimato Matemático (No Confianza)**
-```
-Sistemas tradicionales:
-"Confiamos en que la policía no revelará tu identidad"
-→ La policía está comprada
-→ Te descubren
-→ Mueres
+Gestiona fondos y distribución de recompensas.
 
-RIKUY:
-Zero-Knowledge Proof matemáticamente garantiza anonimato
-→ Ni nosotros sabemos quién eres
-→ Imposible descubrirte
-→ Vives
-```
+\`\`\`solidity
+function releaseRewards(
+    bytes32 reportId,
+    uint16 categoryId,
+    address reporter,     // null para reportes anónimos
+    address[] validators
+) external
+\`\`\`
 
-#### 2️⃣ **Inmutabilidad (No Pueden Borrar)**
-```
-Sistemas tradicionales:
-Reportas corrupción → Entran al sistema → Borran el expediente
-→ No hay evidencia
-→ No hay juicio
-→ Impunidad
-
-RIKUY:
-Evidencia en blockchain (Arkiv + IPFS)
-→ Existe para siempre
-→ Distribución global (miles de nodos)
-→ Periodistas, jueces, ONGs tienen acceso
-→ Imposible borrar
-```
-
-#### 3️⃣ **Incentivos Económicos (Game Theory)**
-```
-Sistemas tradicionales:
-Denunciar = 100% riesgo, 0% beneficio
-→ Nadie denuncia
-
-RIKUY:
-Denunciar = 0% riesgo (anónimo), 100% beneficio ($2-$3 USD)
-→ Todos denuncian
-→ Avalancha de información
-→ Crimen organizado colapsa
-```
-
-#### 4️⃣ **Validación Distribuida (Anti-Censura)**
-```
-Sistemas tradicionales:
-1 policía corrupto decide qué es válido
-→ Todo lo que molesta se descarta
-
-RIKUY:
-Comunidad vota (5+ personas)
-→ Consenso distribuido
-→ Imposible manipular
-→ La verdad emerge
-```
+**Sistema de Recompensas**:
+- Reportes de corrupción: 2x puntos
+- Bonus por severidad (analizado por IA)
+- Distribución entre reporter y validators
+- ERC20 compatible (MockUSX para testnet)
 
 ---
 
-## 🏗️ Arquitectura del Sistema
+#### GovernmentRegistry
+**Dirección**: `0xD65C9aA84b78a2aDea2011CD992F2475a4CD01a0`
 
-### **Flujo Completo (Desde la Denuncia hasta la Recompensa)**
+Registro de entidades gubernamentales autorizadas.
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  👤 DENUNCIANTE ANÓNIMO                                 │
-│  • Abre RIKUY app                                       │
-│  • Login con Google/Email (Privy - sin wallets)        │
-│  • Toma foto de: narcos / corrupción / pandillas       │
-│  • Agrega contexto (opcional): "Policía X recibe soborno"│
-│  • Click "Denunciar"                                    │
-└────────────────┬────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────┐
-│  🖥️  BACKEND API (Node.js - El Cerebro)                │
-│                                                         │
-│  [1] LIMPIEZA DE EVIDENCIA                             │
-│      • Remueve EXIF (GPS, marca, modelo, timestamp)    │
-│      • Difumina rostros inocentes (OpenCV)             │
-│      • Hash SHA-256 (detectar duplicados)              │
-│                                                         │
-│  [2] ANONIMIZACIÓN                                     │
-│      • Genera ZK Proof:                                │
-│        "Soy ciudadano válido + estoy cerca"            │
-│      • NO revela: identidad, ubicación exacta          │
-│      • Ofusca ubicación: "±200m del punto"             │
-│                                                         │
-│  [3] STORAGE INMUTABLE                                 │
-│      • Foto → IPFS (Pinata)                            │
-│      • Metadata → Arkiv (permanente)                   │
-│      • CID: Qm... (hash único)                         │
-│                                                         │
-│  [4] ANÁLISIS IA                                       │
-│      • GPT-4 Vision analiza:                           │
-│        - Categoría (droga/armas/corrupción)            │
-│        - Descripción automática                        │
-│        - Nivel de severidad (1-10)                     │
-│        - Moderación de contenido                       │
-│                                                         │
-│  [5] REGISTRO BLOCKCHAIN                               │
-│      • Scroll: RikuyCore.createReport()                │
-│      • Emite evento: ReportCreated                     │
-│      • Gas pagado por Paymaster (usuario $0)           │
-│                                                         │
-└────────┬────────────────────────────────────────────────┘
-         │
-         ├──────────────┬──────────────┬──────────────┐
-         ▼              ▼              ▼              ▼
-    ┌────────┐    ┌─────────┐    ┌─────────┐    ┌────────┐
-    │📦 IPFS │    │🗄️ Arkiv │    │⛓️ Scroll│    │🤖 GPT-4│
-    │        │    │         │    │         │    │        │
-    │ Imagen │    │Metadata │    │ Smart   │    │ Vision │
-    │Permanente   │Inmutable│    │Contracts│    │Analysis│
-    │        │    │10 años  │    │ USX     │    │        │
-    └────────┘    └─────────┘    └─────────┘    └────────┘
-         │              │              │
-         └──────────────┴──────────────┘
-                        │
-                        ▼
-         ┌──────────────────────────────┐
-         │  👥 VALIDACIÓN COMUNITARIA   │
-         │                              │
-         │  • Vecinos cercanos ven      │
-         │    reporte (anónimo también) │
-         │  • Votan: ¿Es real?          │
-         │  • Threshold: 5+ votos SÍ    │
-         │  • Marca: VERIFICADO          │
-         │                              │
-         │  Anti-spam:                  │
-         │  • 1 voto por persona        │
-         │  • Máx 5 reportes/día        │
-         └──────────────┬───────────────┘
-                        │
-                        ▼
-         ┌──────────────────────────────┐
-         │  🏛️  CONSUMIDORES DE DATA    │
-         │                              │
-         │  Gobierno:                   │
-         │   → Dashboard de analytics   │
-         │   → Heatmaps de criminalidad │
-         │   → API en tiempo real       │
-         │                              │
-         │  Policía (no corrupta):      │
-         │   → Inteligencia de campo    │
-         │   → Patrones de crimen       │
-         │   → Alertas urgentes         │
-         │                              │
-         │  ONGs / Periodistas:         │
-         │   → Evidencia verificada     │
-         │   → Investigaciones          │
-         │   → Campañas de presión      │
-         │                              │
-         │  TODOS pagan API access      │
-         │  ($5K-$100K/mes)             │
-         └──────────────┬───────────────┘
-                        │
-                        ▼
-         ┌──────────────────────────────┐
-         │  ✅ APROBACIÓN OFICIAL       │
-         │                              │
-         │  • Gobierno revisa caso      │
-         │  • Verifica con fuentes      │
-         │  • Aprueba resolución        │
-         │  • Smart contract libera $   │
-         └──────────────┬───────────────┘
-                        │
-                        ▼
-         ┌──────────────────────────────┐
-         │  💰 RECOMPENSAS EN USX       │
-         │                              │
-         │  • Denunciante: $140         │
-         │  • 5 validadores: $10 c/u    │
-         │  • Total: $200               │
-         │                              │
-         │  Características USX:        │
-         │  ✅ Gasless (Scroll)         │
-         │  ✅ Privado (ZK)             │
-         │  ✅ 10-15% APY (stake)       │
-         │  ✅ Spendable (ether.fi)     │
-         │                              │
-         │  Transacción anónima         │
-         │  Nadie sabe quién recibió    │
-         └──────────────────────────────┘
-```
+- Gestión de permisos para resolver reportes
+- Whitelist de direcciones oficiales
+- Auditoría de acciones gubernamentales
 
 ---
 
-### **Stack Técnico Completo**
+### Contratos de Soporte
 
-```typescript
-┌────────────────────────────────────────────┐
-│           FRONTEND (React)                 │
-├────────────────────────────────────────────┤
-│ • Privy (Auth - Google/Email/Wallet)      │
-│ • wagmi/viem (Blockchain interaction)     │
-│ • Mapbox (Geolocation)                    │
-│ • React Camera (Foto capture)             │
-└────────────────────────────────────────────┘
-                     ↕
-┌────────────────────────────────────────────┐
-│         BACKEND (Node.js/Express)          │
-├────────────────────────────────────────────┤
-│ • ethers.js v6 (Scroll interaction)       │
-│ • @arkiv-network/sdk (Immutable storage)  │
-│ • Pinata Web3 SDK (IPFS)                  │
-│ • OpenAI API (GPT-4 Vision)               │
-│ • Sharp (Image processing)                │
-│ • Redis (Rate limiting)                   │
-│ • Winston (Logging)                       │
-└────────────────────────────────────────────┘
-                     ↕
-┌────────────────────────────────────────────┐
-│        BLOCKCHAIN (Scroll Sepolia)         │
-├────────────────────────────────────────────┤
-│ Smart Contracts (Solidity 0.8.23):        │
-│                                            │
-│ • RikuyCore.sol                           │
-│   - createReport()                        │
-│   - validateReport()                      │
-│   - resolveReport()                       │
-│   - claimReward()                         │
-│                                            │
-│ • Treasury.sol                            │
-│   - releaseReward() → USX transfer        │
-│   - fundTreasury()                        │
-│                                            │
-│ • ReportRegistry.sol                      │
-│   - Storage inmutable de reportes         │
-│   - Validaciones anti-doble-voto          │
-│                                            │
-│ • RikuyPaymaster.sol (ERC-4337)           │
-│   - Gasless transactions                  │
-│   - Sponsorship de fees                   │
-│                                            │
-│ • MockUSX.sol                             │
-│   - ERC20 stablecoin (testnet)            │
-│   - En prod: Real USX de Scroll           │
-└────────────────────────────────────────────┘
-                     ↕
-┌────────────────────────────────────────────┐
-│      STORAGE LAYER (Descentralizado)       │
-├────────────────────────────────────────────┤
-│ • IPFS (Pinata)                           │
-│   - Imágenes                              │
-│   - Content addressing (CID)              │
-│                                            │
-│ • Arkiv Network (Mendoza)                 │
-│   - Metadata completa                     │
-│   - Queryable attributes                  │
-│   - Expiration: 10 años                   │
-│   - Immutable                             │
-└────────────────────────────────────────────┘
-                     ↕
-┌────────────────────────────────────────────┐
-│          PRIVACY LAYER (ZK Proofs)         │
-├────────────────────────────────────────────┤
-│ • Circom (ZK circuit language)            │
-│ • Groth16 (SNARK proof system)            │
-│ • Mock verifier (testnet)                 │
-│                                            │
-│ Prueba:                                   │
-│ ✓ Ciudadano válido                        │
-│ ✓ Proximidad geográfica                   │
-│ ✓ No duplicado                            │
-│ ✗ NO revela identidad                     │
-└────────────────────────────────────────────┘
-```
+#### MockUSX (ERC20)
+**Dirección**: `0xD15ED9ea64B0a1d9535374F27de79111EbE872C1`
+
+Token de prueba para recompensas en testnet. En producción se reemplazará por stablecoin real (USDC/USDT).
+
+#### MockSemaphoreAdapter
+**Dirección**: `0x098FF07f87C1AAec0dD5b16c2F0199aA2b60bB75`
+
+**Nota**: Este es un contrato temporal para desarrollo. Acepta cualquier proof sin verificar.
+
+**Estado**: En desarrollo - Se reemplazará por integración completa con Semaphore Protocol.
 
 ---
 
-## 💼 Business Model: Monetizando la Verdad
+## Arquitectura del Sistema
 
-### 🎯 **La Realidad**
+### Componentes
 
-RIKUY no es caridad. **Es un negocio multimillonario**.
+\`\`\`
+┌─────────────┐
+│   Frontend  │  React + TypeScript + Vite
+│   (Privy)   │  - Autenticación Web3
+└──────┬──────┘  - Generación ZK Proofs
+       │         - Captura de evidencia
+       │
+       ▼
+┌─────────────┐
+│   Backend   │  Node.js + Express + TypeScript
+│  (Relayer)  │  - Firma transacciones (gasless)
+└──────┬──────┘  - IA para análisis de imágenes
+       │         - Moderación de contenido
+       │
+       ├──────────────┬────────────────┐
+       ▼              ▼                ▼
+┌──────────┐   ┌──────────┐    ┌──────────┐
+│   IPFS   │   │  Arkiv   │    │  Scroll  │
+│ (Pinata) │   │ Network  │    │ Sepolia  │
+└──────────┘   └──────────┘    └──────────┘
+\`\`\`
 
-**¿Por qué?** Porque los datos de criminalidad verificados valen oro:
+### Flujo de Datos
 
----
-
-### 1️⃣ **Gobiernos (El Cliente Ancla)**
-
-**¿Qué vendemos?**
-- 📊 **Crime Intelligence Platform**
-  - Dashboard de analytics en tiempo real
-  - "67 reportes de narcotráfico en Zona X este mes"
-  - "Patrón: Viernes 21:00-02:00"
-  - "Hotspot: Calle Los Andes esquina Murillo"
-  - Heatmaps interactivos
-  - Alertas automáticas
-
-**Precio**: $10,000 - $100,000 USD/mes por ciudad
-
-**Caso de uso real**:
-```
-Ministerio del Interior (Bolivia):
-"Necesitamos saber dónde están los narcos para desplegar fuerzas especiales"
-
-RIKUY Dashboard muestra:
-→ 234 reportes de narcotráfico (último mes)
-→ 78% concentrados en 3 zonas
-→ 89% validados por comunidad
-→ 45 reportes con evidencia de corrupción policial
-→ Horarios pico: 21:00-03:00 (Vie-Sab)
-
-Gobierno:
-→ Envía unidades de élite (no policía local)
-→ 12 operativos exitosos
-→ 34 arrestos
-→ 18kg droga decomisada
-
-ROI: Invierte $50K/mes, destruye operaciones de $5M/mes
-```
-
-**Proyección**:
-- Año 1: 5 gobiernos municipales × $20K/mes = $1.2M/año
-- Año 2: 20 gobiernos + 3 nacionales × $50K/mes = $13.8M/año
+1. **Captura**: Usuario toma foto del incidente
+2. **Geolocalización**: Coordenadas GPS con precisión difusa (~200m)
+3. **Análisis IA**: Gemini Vision API valida contenido
+4. **Storage Descentralizado**:
+   - IPFS (Pinata): Acceso rápido
+   - Arkiv: Almacenamiento permanente (10 años)
+5. **ZK Proof**: Generación local con Semaphore Protocol
+6. **Blockchain**: Registro inmutable en Scroll Sepolia
 
 ---
 
-### 2️⃣ **Fuerzas de Seguridad (Policía/Antinarcóticos)**
+## Stack Tecnológico
 
-**¿Qué vendemos?**
-- 🚨 **Real-Time Intelligence API**
-  - Alertas en vivo de actividad criminal
-  - Patrones de operación (horarios, rutas)
-  - Conexiones entre reportes (redes)
-  - Perfiles de zonas críticas
+### Frontend
+- **Framework**: React 18 + TypeScript
+- **Build Tool**: Vite
+- **UI Library**: Hero UI (Tailwind-based)
+- **Web3 Auth**: Privy (wallet abstraction)
+- **ZK Proofs**: `@semaphore-protocol/core`
+- **Routing**: React Router v6
 
-**Precio**: $15,000 - $150,000 USD/mes por jurisdicción
+### Backend
+- **Runtime**: Node.js 20+
+- **Framework**: Express.js
+- **Language**: TypeScript
+- **Web3 Library**: ethers.js v6
+- **Storage**:
+  - IPFS: Pinata SDK
+  - Arkiv: `@arkiv-network/sdk`
+- **AI/ML**:
+  - Vision: Google Gemini API
+  - Content Moderation: OpenAI (opcional)
+- **Logging**: Pino (structured logging)
 
-**Ejemplo**:
-```
-Policía Antinarcóticos (La Paz):
-"¿Dónde operan Los Halcones esta semana?"
+### Smart Contracts
+- **Language**: Solidity 0.8.20+
+- **Framework**: Foundry
+- **Upgrades**: OpenZeppelin UUPS
+- **Access Control**: OpenZeppelin AccessControl
+- **ZK**: Semaphore Protocol v4
 
-RIKUY Intelligence API:
-→ 23 reportes asociados a "Los Halcones"
-→ Zona operativa: Villa Adela, Radio 500m
-→ Horario: 22:00-02:00
-→ Vehículo reportado: Nissan Patrol negra, Placa ABC-123
-→ Conexión con 3 puntos de venta adicionales
-→ Evidencia fotográfica: 18 imágenes verificadas
-
-Operativo coordinado:
-→ Arrestan a 7 miembros
-→ Desarticulan red de distribución
-→ Rescatan a 3 menores
-```
-
-**Proyección**:
-- Año 1: 2 fuerzas × $30K/mes = $720K/año
-- Año 2: 10 fuerzas × $50K/mes = $6M/año
-
----
-
-### 3️⃣ **ONGs y Organismos de DDHH**
-
-**¿Qué vendemos?**
-- 📋 **Evidencia Verificada para Advocacy**
-  - Reportes anonimizados
-  - Estadísticas de violaciones de DDHH
-  - Evidencia fotográfica para campañas
-  - Testimonios protegidos
-
-**Precio**: $2,000 - $20,000 USD/año
-
-**Ejemplo**:
-```
-ONG "Transparencia Internacional" (Bolivia):
-"Necesitamos evidencia de corrupción policial para informe anual"
-
-RIKUY Data Package:
-→ 345 reportes de corrupción (12 meses)
-→ 67% involucra a policía local
-→ $2.3M USD en sobornos estimados
-→ Evidencia fotográfica: 89 casos documentados
-→ Validación comunitaria: 91% confirmado
-
-ONG:
-→ Publica informe devastador
-→ Presión internacional
-→ 12 policías destituidos
-→ Reforma del sistema
-```
-
-**Proyección**:
-- Año 1: 10 ONGs × $5K/año = $50K/año
-- Año 2: 50 ONGs × $10K/año = $500K/año
+### Blockchain & Storage
+- **L2**: Scroll Sepolia (EVM-compatible)
+- **IPFS**: Pinata (gateway + pinning)
+- **Permanent Storage**: Arkiv Network (Mendoza Testnet)
+- **RPC**: Scroll Public RPC
 
 ---
 
-### 4️⃣ **Medios de Comunicación**
+## Estado del Desarrollo
 
-**¿Qué vendemos?**
-- 📰 **Periodismo Ciudadano Verificado**
-  - Feed de reportes en tiempo real
-  - Evidencia sin copyright (uso editorial)
-  - Fuentes anónimas protegidas 100%
-  - API de búsqueda avanzada
+### Completado
 
-**Precio**: $1,000 - $10,000 USD/mes
+**Smart Contracts**:
+- [x] RikuyCoreV2 con Relayer Pattern
+- [x] ReportRegistry para storage
+- [x] Treasury con sistema de recompensas
+- [x] GovernmentRegistry para permisos
+- [x] Deploy completo en Scroll Sepolia
 
-**Ejemplo**:
-```
-Periódico "El Deber" (Santa Cruz):
-"Queremos investigar corrupción en obra pública"
+**Backend**:
+- [x] Relayer service (gasless transactions)
+- [x] IPFS integration (Pinata)
+- [x] AI vision analysis (Gemini)
+- [x] Content moderation
+- [x] Structured logging
+- [x] Error handling
 
-RIKUY Search API:
-→ Query: "corrupción + construcción + 2024"
-→ 67 reportes encontrados
-→ Patrón: Mismo contratista en 12 obras
-→ Evidencia: Materiales de baja calidad
-→ Obra presupuestada: $5M USD
-→ Obra real: $1.5M USD (según evidencia)
-→ Diferencia: $3.5M desviados
+**Frontend**:
+- [x] Web3 authentication (Privy)
+- [x] Wallet abstraction
+- [x] Camera capture
+- [x] Geolocation
+- [x] Report submission UI
 
-Periódico:
-→ Investigación de 3 meses
-→ Portada: "El robo del siglo"
-→ Fiscal inicia investigación
-→ Contratista arrestado
-→ Gobierno recupera $2M
-```
+### En Desarrollo
 
-**Proyección**:
-- Año 1: 5 medios × $3K/mes = $180K/año
-- Año 2: 20 medios × $5K/mes = $1.2M/año
+**Semaphore Integration** (Prioridad Alta):
+- [ ] Implementar generación de proofs reales en frontend
+- [ ] Endpoint para registrar identities on-chain
+- [ ] Obtener Merkle tree del grupo Semaphore
+- [ ] Reemplazar MockSemaphoreAdapter por adapter real
+- [ ] Verificación de nullifiers únicos
 
----
+**Arkiv Integration** (Prioridad Media):
+- [ ] Resolver error de compresión Brotli
+- [ ] Actualizar SDK a última versión
+- [ ] Implementar retry logic
+- [ ] Optimizar payload size
 
-### 5️⃣ **Sector Privado (B2B SaaS)**
-
-**¿Qué vendemos?**
-- 🏢 **Risk Intelligence API**
-  - Seguros: Cotización de zonas peligrosas
-  - Real Estate: Valuación ajustada por crimen
-  - Apps de movilidad: Rutas seguras
-  - Empresas: Security assessment
-
-**Precio**: $5,000 - $50,000 USD/mes
-
-**Ejemplo**:
-```
-Uber/Cabify:
-"Queremos alertar a conductores de zonas peligrosas"
-
-RIKUY Safety API:
-→ GET /risk-score?lat=-16.5&long=-68.1
-→ Response: {
-    risk_level: "HIGH",
-    incidents_30d: 45,
-    categories: ["robbery", "violence"],
-    peak_hours: ["20:00-02:00"],
-    recommendation: "Avoid after 20:00"
-  }
-
-Uber:
-→ Alerta al conductor: "Zona de riesgo. Conducir con precaución"
-→ Sugiere ruta alternativa
-→ Precio surge ajustado (compensación por riesgo)
-```
-
-**Proyección**:
-- Año 1: 3 empresas × $10K/mes = $360K/año
-- Año 2: 15 empresas × $20K/mes = $3.6M/año
+**Features Pendientes**:
+- [ ] Sistema de notificaciones
+- [ ] Dashboard de reportes
+- [ ] Visualización en mapa
+- [ ] Sistema de apelaciones
+- [ ] Métricas y analytics
+- [ ] Tests end-to-end
 
 ---
 
-### 💰 **Proyección Consolidada de Ingresos**
+## Instalación y Configuración
 
-**Año 1 (Bolivia - Piloto):**
-```
-Gobiernos:       $1,200,000
-Policía:           $720,000
-ONGs:               $50,000
-Medios:            $180,000
-Privado:           $360,000
-─────────────────────────────
-TOTAL:          $2,510,000 USD/año
-```
+### Requisitos Previos
 
-**Año 2 (Expansión Latinoamérica - 6 países):**
-```
-Gobiernos:      $13,800,000
-Policía:         $6,000,000
-ONGs:              $500,000
-Medios:          $1,200,000
-Privado:         $3,600,000
-─────────────────────────────
-TOTAL:         $25,100,000 USD/año
-```
+\`\`\`bash
+# Node.js
+node --version  # v20.0.0 o superior
 
-**Año 3 (Consolidación - 12 países + USA pilots):**
-```
-Estimado: $50M+ USD/año
-```
+# Foundry (para smart contracts)
+forge --version
 
----
+# Git
+git --version
+\`\`\`
 
-### 🌎 **Otras Líneas de Negocio**
+### Instalación
 
-1. **🏆 Premium Citizens (B2C)**
-   - Usuarios pagan $10/mes por features premium
-   - Ranking de top reporters
-   - Badges NFT de logros cívicos
-   - Stats detalladas
-   - **Proyección**: 10K usuarios × $10 = $1.2M/año
+\`\`\`bash
+# Clonar repositorio
+git clone https://github.com/tu-org/rikuy.git
+cd rikuy
 
-2. **🎓 Investigación Académica**
-   - Universidades licencian datasets
-   - Estudios de criminología, sociología
-   - **Precio**: $1,000/año por institución
-   - **Proyección**: 50 universidades = $50K/año
+# Instalar dependencias del backend
+cd backend
+npm install
 
-3. **📊 Data Marketplace (Agregado/Anonimizado)**
-   - Venta de insights a urbanistas, think tanks
-   - $100 - $5,000 por dataset
-   - **Proyección**: $200K/año
+# Instalar dependencias del frontend
+cd ../frontend
+npm install
+\`\`\`
 
-4. **🤝 White-Label Solutions**
-   - Gobiernos quieren su propia plataforma
-   - "Mi Ciudad Segura" (powered by RIKUY)
-   - **Precio**: $500K - $2M por implementación
-   - **Proyección**: 2-3 por año = $2M/año
+### Configuración
 
----
+#### Backend (.env)
 
-## 🚀 Visión de Futuro: Más Allá del Hackathon
+\`\`\`bash
+# Blockchain
+SCROLL_RPC_URL=https://sepolia-rpc.scroll.io
+SCROLL_CHAIN_ID=534351
+RELAYER_PRIVATE_KEY=0x...  # Wallet privada del backend
 
-### **RIKUY NO es un proyecto de hackathon. Es un movimiento.**
+# Smart Contracts
+RIKUY_CORE_V2_ADDRESS=0xEaa6cB7Fa8BEBEa72c78fAd2170b103aC1C2F126
+REPORT_REGISTRY_ADDRESS=0xdc3c4c07e4675cf1BBDEa627026e92170f9F5AE1
+TREASURY_ADDRESS=0xb53cd2E6a71E88C4Df5863CD8c257077cD8C1aa2
 
-Nuestro objetivo es convertir RIKUY en **la infraestructura cívica de Latinoamérica** - la plataforma donde las comunidades recuperan el poder que el crimen les robó.
+# IPFS (Pinata)
+PINATA_JWT=tu_jwt_de_pinata
+PINATA_GATEWAY=https://gateway.pinata.cloud
 
----
+# AI
+GEMINI_API_KEY=tu_api_key_de_gemini
 
-### 🎯 **Roadmap 2025-2026**
+# Arkiv
+ARKIV_RPC_URL=https://mendoza.hoodi.arkiv.network/rpc
+ARKIV_PRIVATE_KEY=0x...
 
-#### **Q3 2026: Piloto en Bolivia** 🇧🇴
+# Development
+DEV_MODE=true  # Habilita bypass de verificaciones ZK
+\`\`\`
 
-- 🎯 **Objetivos:**
-  - Deploy en **Villa Adela + Villa Dolores** (2 barrios críticos)
-  - 500 usuarios activos
-  - 200+ reportes verificados
-  - 3 operativos policiales exitosos
-  - $10K USD distribuidos en recompensas
+#### Frontend (.env)
 
-- 💰 **Funding:**
-  - Gobierno municipal: $25K (patrocinio de recompensas)
-  - ONG Ciudadanos: $15K (co-marketing)
-  - Grants: $30K (aplicando a Scroll, Arkiv, Ethereum Foundation)
+\`\`\`bash
+VITE_PRIVY_APP_ID=tu_app_id_de_privy
+VITE_BACKEND_API_URL=http://localhost:3001
+\`\`\`
 
----
+### Ejecución
 
-#### **Q2 2026: Expansión Bolivia**
-- 🎯 **3 ciudades:** La Paz, Cochabamba, Santa Cruz
-- 🎯 **5,000 usuarios activos**
-- 🎯 **Primer contrato gobierno:** Ministerio del Interior ($20K/mes)
-- 🎯 **Partnership con Defensoría del Pueblo**
-- 🎯 **Lanzamiento de API de pago** (primeros clientes B2B)
+\`\`\`bash
+# Backend (puerto 3001)
+cd backend
+npm run dev
+
+# Frontend (puerto 5173)
+cd frontend
+npm run dev
+\`\`\`
+
+Abrir navegador en `http://localhost:5173`
 
 ---
 
-#### **Q1 2027: Internacionalización**
-- 🎯 **Países:** Argentina, Perú, Colombia
-- 🎯 **25,000 usuarios**
-- 🎯 **10 clientes B2B** ($500K MRR)
-- 🎯 **Primera ronda de inversión:** $2M USD (Seed)
-  - Valuación: $10M post-money
-  - Investors objetivo: a16z crypto, Paradigm, Coinbase Ventures
+## Smart Contract Development
+
+### Compilar contratos
+
+\`\`\`bash
+forge build
+\`\`\`
+
+### Ejecutar tests
+
+\`\`\`bash
+forge test -vvv
+\`\`\`
+
+### Deploy a Scroll Sepolia
+
+\`\`\`bash
+# MockSemaphoreAdapter
+forge script script/DeployMockAdapter.s.sol:DeployMockAdapter \
+  --rpc-url $SCROLL_RPC_URL \
+  --broadcast
+
+# RikuyCoreV2
+forge script script/DeployRikuyCoreV2.s.sol:DeployRikuyCoreV2 \
+  --rpc-url $SCROLL_RPC_URL \
+  --broadcast
+\`\`\`
 
 ---
 
-#### **Q2 2027: Consolidación**
-- 🎯 **50,000+ usuarios activos**
-- 🎯 **15 ciudades** operativas
-- 🎯 **$2M+ MRR** (revenue mensual recurrente)
-- 🎯 **Break-even** (rentabilidad)
-- 🎯 **Integración USX real** (cuando Scroll lance en mainnet)
-- 🎯 **ether.fi Cash integration** (spendable rewards)
+## Roadmap
+
+### Q1 2025
+- Completar integración con Semaphore Protocol
+- Resolver issues de Arkiv storage
+- Deploy en Scroll Mainnet
+- Auditoría de smart contracts
+
+### Q2 2025
+- Mobile app (React Native)
+- Sistema de reputación avanzado
+- Integración con múltiples L2s
+- Partnerships con gobiernos locales
+
+### Q3 2025
+- DAO para gobernanza
+- Tokenomics completa
+- Programa de rewards
+- Expansión internacional
 
 ---
 
-#### **2026: Dominación Regional**
-- 🎯 **12 países** en Latinoamérica
-- 🎯 **500,000 usuarios**
-- 🎯 **$10M+ MRR**
-- 🎯 **Series A:** $15M USD
-- 🎯 **Pilots en USA** (comunidades latinas)
+## Seguridad
+
+### Consideraciones Actuales
+
+**Modo Desarrollo**:
+- `DEV_MODE=true` bypasea verificación de ZK proofs en backend
+- `MockSemaphoreAdapter` acepta cualquier proof sin verificar
+- Solo para desarrollo/testing - NO usar en producción
+
+**Antes de Producción**:
+- [ ] Auditoría completa de smart contracts
+- [ ] Penetration testing del backend
+- [ ] Configurar `DEV_MODE=false`
+- [ ] Reemplazar MockSemaphoreAdapter
+- [ ] Implementar rate limiting robusto
+- [ ] Configurar monitoring y alertas
 
 ---
 
+## Licencia
 
-### 🌟 **Impacto Social Proyectado**
-
-**Nuestro North Star:**
-> "Crear una Latinoamérica donde denunciar crimen no sea una sentencia de muerte"
-
-#### **Métricas de Éxito (5 años):**
-
-- 📊 **1,000,000+ denuncias verificadas**
-  - vs. 0 denuncias hoy (por miedo)
-
-- 💰 **$50M+ distribuidos en recompensas**
-  - Ciudadanos ganando dinero por ayudar
-
-- 🏛️ **100+ gobiernos usando la plataforma**
-  - Policy basado en datos reales (no inventados)
-
-- 🔒 **0 casos de represalias contra denunciantes**
-  - Anonimato matemáticamente garantizado
-
-- ⚖️ **5,000+ arrestos**
-  - Basados en evidencia de RIKUY
-
-- 📉 **-30% criminalidad**
-  - En zonas donde RIKUY está activo
+MIT License - Ver archivo LICENSE para detalles
 
 ---
 
-### 💭 **La Visión Final**
+## Contacto y Contribuciones
 
-**Imagine un futuro donde:**
+- GitHub: [https://github.com/tu-org/rikuy](https://github.com/tu-org/rikuy)
+- Documentación Técnica: [Ver DEVELOPMENT_NOTES.md](./DEVELOPMENT_NOTES.md)
 
-- Un niño en Villa Adela puede ir a la escuela sin ver narcos
-- Una madre puede denunciar al asesino de su hijo sin morir
-- Un periodista puede investigar corrupción sin "suicidarse"
-- Un gobierno puede tomar decisiones con datos reales, no ficción
-- Una comunidad puede destruir al crimen organizado con sus teléfonos
-
-**Ese futuro es posible. Ese futuro es RIKUY.**
+Para contribuir, por favor lee CONTRIBUTING.md y abre un Pull Request.
 
 ---
 
-## 🛠️ Información Técnica
-
-### **Contratos Deployados (Scroll Sepolia Testnet)**
-
-| Contrato | Address | Función |
-|----------|---------|---------|
-| **RikuyCore** | `0x2b514e6ebaa9a7dEd3f7c6c668708ae92791f478` | Orquestador principal |
-| **Treasury** | `0xb53cd2E6a71E88C4Df5863CD8c257077cD8C1aa2` | Fondos (100K USX) |
-| **ReportRegistry** | `0xdc3c4c07e4675cf1BBDEa627026e92170f9F5AE1` | Storage inmutable |
-| **MockUSX** | `0xD615074c2603336fa0Da8AF44B5CCB9D9C0B2F9c` | Stablecoin (testnet) |
-| **Paymaster** | `0xD65C9aA84b78a2aDea2011CD992F2475a4CD01a0` | Account abstraction |
-| **GovernmentRegistry** | `0x9890872bbf4B2DC3fBcA848ECa94799676E6F37e` | Whitelist gobiernos |
-
-**Explorer**: [Ver en Scrollscan](https://sepolia.scrollscan.com/address/0x2b514e6ebaa9a7dEd3f7c6c668708ae92791f478)
-
----
-
-### **Backend API (Running)**
-
-```bash
-Base URL: http://localhost:3001
-
-Endpoints:
-├── GET  /health              - Health check
-├── POST /api/reports         - Crear denuncia
-├── GET  /api/reports/:id     - Obtener denuncia
-├── POST /api/reports/:id/validate - Votar
-└── GET  /api/reports/nearby  - Buscar por zona
-```
-
-**Status**: ✅ Running
-**Arkiv**: ✅ Connected (Mendoza)
-**Scroll**: ✅ Connected (Sepolia)
-**IPFS**: ✅ Connected (Pinata)
-**GPT-4**: ✅ Connected (OpenAI)
-
-
-## 🙏 Powered By
-
-- **Scroll** - L2 con USX (gasless + private + 10-15% APY)
-- **Arkiv** - Immutable storage (nobody can erase)
-- **OpenZeppelin** - Battle-tested smart contracts
-- **Pinata** - IPFS gateway
-- **OpenAI** - GPT-4 Vision
-- **Privy** - Web2-like auth for Web3
-
----
-
-## 📄 Licencia
-
-MIT License - Ver [LICENSE](LICENSE)
-
----
-
-<div align="center">
-
-### 💙 Hecho para las víctimas del silencio
-
-### 🔥 Hecho para destruir la impunidad
-
-**RIKUY**
-
-*"La única manera de derrotar al silencio es hacer imposible el olvido"*
-
----
-
-**Denuncia. Gana. Destruye al crimen.**
-
-</div>
+**Nota**: Este proyecto está en desarrollo activo. El sistema de Zero-Knowledge Proofs está siendo implementado y actualmente usa un adapter mock para desarrollo. Ver [Estado del Desarrollo](#estado-del-desarrollo) para más detalles.
