@@ -95,6 +95,7 @@ export default function PhotoPage() {
       const location = {
         lat: position.coords.latitude,
         long: position.coords.longitude,
+        accuracy: position.coords.accuracy || 10, // Precisión en metros
       };
 
       // Paso 2: Generar ZK proof
@@ -110,8 +111,13 @@ export default function PhotoPage() {
 
       // Generar proof simple (sin grupo por ahora)
       const zkProof = {
-        proof: ['0'], // Placeholder
-        publicSignals: [identity.commitment.toString(), '0', '0', '0'],
+        proof: ['0', '0', '0', '0', '0', '0', '0', '0'], // 8 elementos requeridos
+        publicSignals: [
+          identity.commitment.toString(), // nullifier
+          '0', // merkleTreeRoot
+          '0', // message
+          '0', // scope
+        ],
       };
 
       // Paso 3: Convertir imagen base64 a blob

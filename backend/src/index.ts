@@ -85,7 +85,22 @@ app.listen(PORT, () => {
   if (config.nodeEnv === 'development') {
     console.log('\n🚀 Rikuy Backend ready');
     console.log(`   → http://localhost:${PORT}`);
-    console.log(`   → Environment: ${config.nodeEnv}\n`);
+    console.log(`   → Environment: ${config.nodeEnv}`);
+
+    // DEV MODE WARNING
+    if (config.devMode) {
+      console.log('\n⚠️  ⚠️  ⚠️  DEV MODE ACTIVE ⚠️  ⚠️  ⚠️');
+      console.log('   → ZK proofs are NOT being verified!');
+      console.log('   → Membership checks are DISABLED!');
+      console.log('   → Nullifier uniqueness is NOT enforced!');
+      console.log('   → DO NOT USE IN PRODUCTION!\n');
+
+      logger.warn({
+        devMode: config.devMode,
+        warning: 'SECURITY BYPASSED FOR DEVELOPMENT'
+      }, '⚠️  DEV MODE ACTIVE - All security checks disabled');
+    }
+    console.log();
   }
 });
 

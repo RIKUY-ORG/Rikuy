@@ -12,8 +12,8 @@ class AIService {
 
   constructor() {
     this.genAI = new GoogleGenerativeAI(config.ai.geminiApiKey);
-    // Usar Gemini 1.5 Flash (rápido y gratuito)
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Usar Gemini Pro Vision (compatible y disponible)
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-pro-vision' });
 
     console.log('[AI] Gemini service initialized');
   }

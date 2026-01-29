@@ -54,3 +54,6 @@ coverage/
 tmp/
 temp/
 *.tmp
+
+# Development notes (NO SUBIR - Contiene info sensible)
+DEVELOPMENT_NOTES.md

@@ -30,8 +30,8 @@ exports.schemas = {
         category: zod_1.z.number().int().min(0).max(4),
         description: zod_1.z.string().max(500).optional(),
         location: zod_1.z.object({
-            lat: zod_1.z.number().min(-55).max(-21),
-            long: zod_1.z.number().min(-73.5).max(-53),
+            lat: zod_1.z.number().min(-23).max(-9.5), // Bolivia bounds
+            long: zod_1.z.number().min(-69.7).max(-57.4), // Bolivia bounds
             accuracy: zod_1.z.number().positive(),
         }),
         zkProof: zod_1.z.object({

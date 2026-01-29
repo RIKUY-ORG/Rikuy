@@ -39,6 +39,23 @@ export function useIdentityStatus() {
       try {
         setStatus(prev => ({ ...prev, isLoading: true, error: null }));
 
+        // Primero verificar localStorage (fuente de verdad local)
+        const identitySecret = localStorage.getItem('rikuy_identity_secret');
+
+        if (identitySecret) {
+          // Si tenemos el identity secret en localStorage, el usuario YA está verificado
+          // (aunque el backend haya perdido la info por reinicio)
+          console.log('[useIdentityStatus] Found identity secret in localStorage - user is verified');
+          setStatus({
+            isVerified: true,
+            isLoading: false,
+            error: null,
+            commitment: identitySecret,
+          });
+          return;
+        }
+
+        // Si no hay nada en localStorage, verificar con el backend
         const url = `${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/identity/status?userAddress=${user.wallet.address}`;
         console.log('[useIdentityStatus] Fetching:', url);
 
@@ -69,12 +86,25 @@ export function useIdentityStatus() {
         }
       } catch (error) {
         console.error('[useIdentityStatus] Error checking identity status:', error);
-        setStatus({
-          isVerified: false,
-          isLoading: false,
-          error: 'Error al verificar identidad',
-          commitment: null,
-        });
+
+        // Incluso si el backend falla, verificar localStorage como fallback
+        const identitySecret = localStorage.getItem('rikuy_identity_secret');
+        if (identitySecret) {
+          console.log('[useIdentityStatus] Backend failed but found localStorage - user is verified');
+          setStatus({
+            isVerified: true,
+            isLoading: false,
+            error: null,
+            commitment: identitySecret,
+          });
+        } else {
+          setStatus({
+            isVerified: false,
+            isLoading: false,
+            error: 'Error al verificar identidad',
+            commitment: null,
+          });
+        }
       }
     }
 
