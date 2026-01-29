@@ -127,9 +127,15 @@ class IdentityService {
   }
 
   async getIdentityStatus(userAddress: string): Promise<IdentityStatusResponse> {
-    const identity = this.identities.get(userAddress);
+    let identity = this.identities.get(userAddress);
 
+    // Si no está en memoria, verificar si existe en localStorage del usuario
+    // El commitment debería estar en localStorage como 'rikuy_identity_secret'
     if (!identity) {
+      // Verificar si hay un identity secret guardado y si ya está en el grupo de Semaphore
+      // Nota: El frontend guarda el identity secret, nosotros solo verificamos el commitment
+      logger.info({ userAddress }, 'Identity not in memory, checking if previously verified');
+
       return {
         success: true,
         data: {

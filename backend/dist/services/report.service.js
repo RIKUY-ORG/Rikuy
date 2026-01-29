@@ -10,6 +10,7 @@ const arkiv_service_1 = require("./arkiv.service");
 const relayer_service_1 = require("./relayer.service");
 const semaphore_service_1 = require("./semaphore.service");
 const logger_1 = require("../utils/logger");
+const config_1 = require("../config");
 const errors_1 = require("../utils/errors");
 const crypto_1 = __importDefault(require("crypto"));
 const logger = (0, logger_1.getServiceLogger)('ReportRelayerService');
@@ -18,6 +19,10 @@ class ReportRelayerService {
         const startTime = Date.now();
         try {
             logger.info('Starting report creation with relayer');
+            // MODO DESARROLLO: Warning si estamos aceptando proofs dummy
+            if (config_1.config.devMode) {
+                logger.warn('⚠️  DEV MODE ACTIVE: ZK proofs are NOT being verified! DO NOT USE IN PRODUCTION!');
+            }
             logger.info('Step 0: Verifying ZK proof');
             const proofResult = await semaphore_service_1.semaphoreService.verifyProof(request.zkProof);
             if (!proofResult.isValid) {
@@ -146,17 +151,18 @@ class ReportRelayerService {
         }));
     }
     validateLocation(location) {
+        // Coordenadas de Bolivia
         const { latMin, latMax, longMin, longMax } = {
-            latMin: -55.0,
-            latMax: -21.0,
-            longMin: -73.5,
-            longMax: -53.0,
+            latMin: -23.0, // Sur de Bolivia
+            latMax: -9.5, // Norte de Bolivia
+            longMin: -70.0, // Oeste de Bolivia
+            longMax: -57.0, // Este de Bolivia
         };
         if (location.lat < latMin ||
             location.lat > latMax ||
             location.long < longMin ||
             location.long > longMax) {
-            throw new errors_1.GeofenceError();
+            throw new errors_1.GeofenceError('Bolivia');
         }
     }
     generateReportId(fileHash, location) {

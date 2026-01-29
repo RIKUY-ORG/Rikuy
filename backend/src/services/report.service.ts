@@ -5,6 +5,7 @@ import { arkivService } from './arkiv.service';
 import { relayerService } from './relayer.service';
 import { semaphoreService } from './semaphore.service';
 import { getServiceLogger } from '../utils/logger';
+import { config } from '../config';
 import {
   GeofenceError,
   DuplicateImageError,
@@ -29,6 +30,11 @@ class ReportRelayerService {
 
     try {
       logger.info('Starting report creation with relayer');
+
+      // MODO DESARROLLO: Warning si estamos aceptando proofs dummy
+      if (config.devMode) {
+        logger.warn('⚠️  DEV MODE ACTIVE: ZK proofs are NOT being verified! DO NOT USE IN PRODUCTION!');
+      }
 
       logger.info('Step 0: Verifying ZK proof');
       const proofResult = await semaphoreService.verifyProof(request.zkProof);
@@ -181,11 +187,12 @@ class ReportRelayerService {
   }
 
   private validateLocation(location: { lat: number; long: number }) {
+    // Coordenadas de Bolivia
     const { latMin, latMax, longMin, longMax } = {
-      latMin: -55.0,
-      latMax: -21.0,
-      longMin: -73.5,
-      longMax: -53.0,
+      latMin: -23.0,  // Sur de Bolivia
+      latMax: -9.5,   // Norte de Bolivia
+      longMin: -70.0, // Oeste de Bolivia
+      longMax: -57.0, // Este de Bolivia
     };
 
     if (
@@ -194,7 +201,7 @@ class ReportRelayerService {
       location.long < longMin ||
       location.long > longMax
     ) {
-      throw new GeofenceError();
+      throw new GeofenceError('Bolivia');
     }
   }
 

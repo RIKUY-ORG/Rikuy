@@ -28,8 +28,8 @@ export const schemas = {
     category: z.number().int().min(0).max(4),
     description: z.string().max(500).optional(),
     location: z.object({
-      lat: z.number().min(-55).max(-21),
-      long: z.number().min(-73.5).max(-53),
+      lat: z.number().min(-23).max(-9.5),    // Bolivia bounds
+      long: z.number().min(-69.7).max(-57.4), // Bolivia bounds
       accuracy: z.number().positive(),
     }),
     zkProof: z.object({
