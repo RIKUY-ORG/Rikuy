@@ -68,7 +68,8 @@ Rikuy evolucionará de un smart contract en Scroll a su propia **L3 soberana** c
 | Fase | Nombre | Tiempo Estimado | Estado |
 |------|--------|-----------------|--------|
 | 0 | Reorganización del Código Actual | 1-2 días | ✅ Completada |
-| 1 | Levantamiento de Rikuy Chain (L3) | 2-3 días | 🔴 Pendiente |
+| 1 | Levantamiento de Rikuy Chain (L3) | 2-3 días | 🟡 En Progreso |
+| 1.5 | Verificación de Ciudadanía (Reclaim) | 1-2 días | 🔴 Pendiente |
 | 2 | Primer Contrato Stylus | 3-5 días | 🔴 Pendiente |
 | 3 | Migración de Contratos Core | 5-7 días | 🔴 Pendiente |
 | 4 | Gas Subsidiado + AI Multi-Provider | 3-5 días | 🔴 Pendiente |
@@ -130,108 +131,81 @@ Movido a `archive/`:
 
 ---
 
-# FASE 1: Levantamiento de Rikuy Chain (L3)
+# FASE 1: Levantamiento de Rikuy Chain (L3) 🟡 EN PROGRESO
+
+> **Última actualización:** 2026-01-29 18:39
 
 ## Objetivo
-Crear tu propia L3 sobre Arbitrum usando Orbit. Esta será la red donde vivirá Rikuy en producción.
+Crear una L3 soberana sobre Arbitrum usando **Orbit self-hosted** para máximo control y demostrar conocimiento técnico profundo en el hackathon.
 
-## Tiempo Estimado: 2-3 días
+## Decisión de Arquitectura
 
-## Visión a Futuro
-Una vez levantada la L3:
-- Tendrás control total sobre gas costs
-- Podrás implementar gas subsidiado nativo
-- Es la base para todo lo demás
-- Si falla algo, siempre puedes volver a Arbitrum Sepolia
+**Elegido: Self-Hosted Orbit** (no RaaS como Caldera/AltLayer)
 
----
+| Aspecto | Valor |
+|---------|-------|
+| **Tipo** | Arbitrum Orbit L3 |
+| **Settlement** | Arbitrum Sepolia (testnet) |
+| **Method** | orbit-setup-script + Chain SDK |
+| **Control** | 100% (secuenciador, validadores, parámetros) |
 
-### Paso 1.1: Elegir Proveedor de Orbit
+## Progreso Actual
 
-**Opciones disponibles:**
+### ✅ Completado
+- [x] Requisitos instalados:
+  - Docker Desktop v29.1.5
+  - Docker Compose v5.0.1
+  - Yarn v1.22.22
+  - Git v2.39.5
+- [x] Repositorio clonado: `orbit-setup-script` en `~/Desktop/orbit-setup-script`
+- [x] Dependencias instaladas con `yarn install` (61.63s)
+- [x] Especificación de Rikuy Chain documentada
 
-| Proveedor | Pros | Contras | Costo Testnet |
-|-----------|------|---------|---------------|
-| **Caldera** | UI muy simple, deploy en minutos | Menos customización | Gratis |
-| **AltLayer** | Más opciones, wizard + | Más complejo | Gratis |
-| **Conduit** | Muy profesional | Requiere contacto | Gratis (tier) |
-| **Self-hosted** | Control total | Muy complejo | Solo infra |
+### 🔴 Próximos Pasos
+1. **Obtener ETH en Arbitrum Sepolia** (1.5 ETH mínimo)
+   - Faucet: https://faucet.arbitrum.io/
+   
+2. **Ejecutar scripts de deployment usando Chain SDK**
+   - Referencia: `github.com/OffchainLabs/arbitrum-chain-sdk`
+   - Scripts de ejemplo: `create-rollup-eth`
+   
+3. **Crear archivos de configuración**
+   - Generar `nodeConfig.json` y `orbitSetupScriptConfig.json`
+   
+4. **Levantar nodo local con Docker**
+   ```bash
+   cd ~/Desktop/orbit-setup-script
+   docker-compose up -d
+   ```
+   
+5. **Ejecutar script de setup final**
+   ```bash
+   PRIVATE_KEY="0x..." \
+   L2_RPC_URL="https://sepolia-rollup.arbitrum.io/rpc" \
+   L3_RPC_URL="http://localhost:8449" \
+   yarn run setup
+   ```
 
-**Recomendación para hackathon**: Caldera o AltLayer (wizard web)
+6. **Documentar credenciales en `deployments/rikuy-chain/`**
 
----
+## Recursos
 
-### Paso 1.2: Configurar Parámetros de Rikuy Chain
+- **orbit-setup-script**: `~/Desktop/orbit-setup-script`
+- **Chain SDK**: https://github.com/OffchainLabs/arbitrum-chain-sdk
+- **Video tutorial**: "How To Deploy an Arbitrum Orbit Chain in 12 minutes"
+- **Docs oficiales**: https://docs.arbitrum.io/launch-orbit-chain
 
-**Parámetros a definir:**
+## Parámetros Objetivo de Rikuy Chain
 
-| Parámetro | Valor Recomendado | Justificación |
-|-----------|-------------------|---------------|
-| **Nombre** | Rikuy Chain | Branding |
-| **Chain ID** | 31337XX (custom) | Evitar colisiones |
-| **Tipo** | Rollup | Más seguro que AnyTrust |
-| **Gas Token** | ETH | Simplicidad |
-| **Block Time** | 250ms | Default Arbitrum |
-| **DA Layer** | Arbitrum One | Heredar seguridad |
-
-**Para producción futura (post-hackathon):**
-- Token de gas custom ($RIKUY)
-- AnyTrust para datos del mapa de calor
-- Secuenciador descentralizado
-
----
-
-### Paso 1.3: Deploy de la L3
-
-**Con Caldera (recomendado):**
-
-1. Ir a https://caldera.xyz
-2. Conectar wallet con ETH en Arbitrum Sepolia
-3. Seguir wizard de "Create Rollup"
-4. Configurar parámetros del Paso 1.2
-5. Esperar deploy (~10 minutos)
-6. Obtener:
-   - RPC URL de tu chain
-   - Chain ID asignado
-   - Explorer URL
-   - Bridge URL
-
-**Guardar esta información en:**
-- `deployments/rikuy-chain/chain-info.json`
-- `.env` (actualizar variables RIKUY_CHAIN_*)
-
----
-
-### Paso 1.4: Fondear la L3
-
-**Qué necesitas:**
-1. ETH en Arbitrum Sepolia (faucet: https://faucet.arbitrum.io)
-2. Bridge ETH a tu L3 usando el bridge que te dio Caldera
-
-**Cantidad recomendada:**
-- 0.1 ETH para testing inicial
-- Más si planeas hacer muchos deploys
-
----
-
-### Paso 1.5: Verificar la L3
-
-**Tests básicos:**
-
-1. Conectar Metamask a tu RPC
-2. Verificar que ves tu balance
-3. Enviar una TX simple (transfer ETH a ti mismo)
-4. Verificar en el explorer de tu chain
-
----
-
-### Entregable de Fase 1
-
-✅ Rikuy Chain (L3) levantada y funcionando
-✅ RPC URL y Chain ID documentados
-✅ Explorer funcionando
-✅ Bridge operativo
-✅ Wallet fondeada para deploys
+```yaml
+name: "Rikuy Chain"
+chain_id: 313370  # Custom, único
+type: "Optimistic Rollup"
+block_time_ms: 250
+gas_token: ETH
+stylus_enabled: true
+settlement: "Arbitrum Sepolia"
+```
 
 ---
 
