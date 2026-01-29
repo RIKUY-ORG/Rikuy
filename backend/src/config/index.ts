@@ -1,50 +1,78 @@
 import dotenv from 'dotenv';
+import { getNetworkConfig,getCurrentNetwork,type NetworkConfig } from './networks';
 
 dotenv.config();
+
+// Get current network configuration
+const networkConfig: NetworkConfig = getNetworkConfig();
 
 export const config = {
   port: parseInt(process.env.PORT || '3001'),
   nodeEnv: process.env.NODE_ENV || 'development',
+  devMode: process.env.DEV_MODE === 'true',
 
-  // Arkiv
+  // ═══════════════════════════════════════════════════════════════
+  // CURRENT NETWORK (Selected via NETWORK env var)
+  // ═══════════════════════════════════════════════════════════════
+  network: getCurrentNetwork(),
+
+  // ═══════════════════════════════════════════════════════════════
+  // BLOCKCHAIN (Dynamic based on selected network)
+  // ═══════════════════════════════════════════════════════════════
+  blockchain: {
+    rpcUrl: networkConfig.rpcUrl,
+    chainId: networkConfig.chainId,
+    networkName: networkConfig.networkName,
+    explorerUrl: networkConfig.explorerUrl,
+    relayerPrivateKey: process.env.RELAYER_PRIVATE_KEY!,
+    contracts: {
+      rikuyCoreV2: networkConfig.contracts.rikuyCoreV2,
+      reportRegistry: networkConfig.contracts.reportRegistry,
+      treasury: networkConfig.contracts.treasury,
+      governmentRegistry: networkConfig.contracts.governmentRegistry,
+      semaphoreAdapter: networkConfig.contracts.semaphoreAdapter,
+      semaphoreAddress: networkConfig.contracts.semaphoreAddress,
+      semaphoreGroupId: networkConfig.contracts.semaphoreGroupId,
+      mockUsx: networkConfig.contracts.mockUsx,
+    },
+  },
+
+  // ═══════════════════════════════════════════════════════════════
+  // ARKIV (Permanent Storage)
+  // ═══════════════════════════════════════════════════════════════
   arkiv: {
     rpcUrl: process.env.ARKIV_RPC_URL || 'https://mendoza.hoodi.arkiv.network/rpc',
     privateKey: process.env.ARKIV_PRIVATE_KEY!,
     chainId: 60138453056,
   },
 
+  // ═══════════════════════════════════════════════════════════════
   // IPFS (Pinata)
+  // ═══════════════════════════════════════════════════════════════
   pinata: {
     jwt: process.env.PINATA_JWT!,
     gateway: process.env.PINATA_GATEWAY || 'https://gateway.pinata.cloud',
   },
 
-  // AI Vision
+  // ═══════════════════════════════════════════════════════════════
+  // AI VISION (Multi-Provider for future AI Consensus)
+  // ═══════════════════════════════════════════════════════════════
   ai: {
     geminiApiKey: process.env.GEMINI_API_KEY!,
     openaiApiKey: process.env.OPENAI_API_KEY,
+    claudeApiKey: process.env.CLAUDE_API_KEY, // For AI Consensus (Phase 4)
   },
 
-  // Blockchain (Scroll)
-  blockchain: {
-    rpcUrl: process.env.SCROLL_RPC_URL || 'https://sepolia-rpc.scroll.io',
-    chainId: parseInt(process.env.SCROLL_CHAIN_ID || '534351'),
-    networkName: 'scroll-sepolia',
-    relayerPrivateKey: process.env.RELAYER_PRIVATE_KEY!,
-    contracts: {
-      rikuyCoreV2: process.env.RIKUY_CORE_V2_ADDRESS!,
-      semaphoreAdapter: process.env.SEMAPHORE_ADAPTER_ADDRESS!,
-      reportRegistry: process.env.REPORT_REGISTRY_ADDRESS!,
-      treasury: process.env.TREASURY_ADDRESS!,
-    },
-  },
-
-  // Redis
+  // ═══════════════════════════════════════════════════════════════
+  // REDIS (Caching)
+  // ═══════════════════════════════════════════════════════════════
   redis: {
     url: process.env.REDIS_URL || 'redis://localhost:6379',
   },
 
-  // Security
+  // ═══════════════════════════════════════════════════════════════
+  // SECURITY
+  // ═══════════════════════════════════════════════════════════════
   security: {
     jwtSecret: process.env.JWT_SECRET || 'dev-secret',
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760'), // 10MB
@@ -52,24 +80,29 @@ export const config = {
     rateLimitMax: parseInt(process.env.RATE_LIMIT_MAX || '5'), // 5 requests
   },
 
-  // Geofencing (Argentina bounds)
+  // ═══════════════════════════════════════════════════════════════
+  // GEOFENCING (Bolivia bounds)
+  // ═══════════════════════════════════════════════════════════════
   geofence: {
-    latMin: -55.0,
-    latMax: -21.0,
-    longMin: -73.5,
-    longMax: -53.0,
+    latMin: -23.0,  // Sur de Bolivia
+    latMax: -9.5,   // Norte de Bolivia (frontera con Brasil)
+    longMin: -69.7, // Oeste de Bolivia (frontera con Chile)
+    longMax: -57.4, // Este de Bolivia (frontera con Brasil)
   },
 };
 
+// ═══════════════════════════════════════════════════════════════
+// ENVIRONMENT VALIDATION
+// ═══════════════════════════════════════════════════════════════
 const requiredEnvVars = [
-  'ARKIV_PRIVATE_KEY',
+  'RELAYER_PRIVATE_KEY',
   'PINATA_JWT',
   'GEMINI_API_KEY',
-  'RELAYER_PRIVATE_KEY',
-  'RIKUY_CORE_V2_ADDRESS',
-  'SEMAPHORE_ADAPTER_ADDRESS',
-  'REPORT_REGISTRY_ADDRESS',
-  'TREASURY_ADDRESS',
+];
+
+// Only validate contract addresses if not in devMode
+const requiredContractVars = [
+  // These are validated per-network, not globally
 ];
 
 if (config.nodeEnv === 'production') {
@@ -78,4 +111,12 @@ if (config.nodeEnv === 'production') {
       throw new Error(`Missing required environment variable: ${envVar}`);
     }
   }
+
+  // Validate that we have contract addresses for the selected network
+  if (!config.blockchain.contracts.rikuyCoreV2) {
+    throw new Error(`Missing RikuyCoreV2 address for network: ${config.network}`);
+  }
 }
+
+// Log current network on startup
+console.log(`🌐 Network: ${config.network} (Chain ID: ${config.blockchain.chainId})`);
