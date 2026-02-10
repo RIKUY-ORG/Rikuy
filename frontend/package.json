@@ -37,6 +37,7 @@
     "@react-aria/i18n": "^3.12.13",
     "@react-aria/visually-hidden": "3.8.28",
     "@react-types/shared": "3.32.1",
+    "@reclaimprotocol/js-sdk": "^4.11.0",
     "@semaphore-protocol/core": "^4.14.0",
     "@semaphore-protocol/identity": "^4.14.0",
     "@tailwindcss/postcss": "4.1.11",
@@ -59,7 +60,8 @@
     "react-simple-maps": "^3.0.0",
     "react-webcam": "^7.2.0",
     "tailwind-variants": "3.1.1",
-    "tailwindcss": "4.1.11"
+    "tailwindcss": "4.1.11",
+    "viem": "^2.45.2"
   },
   "devDependencies": {
     "@eslint/compat": "1.2.8",
