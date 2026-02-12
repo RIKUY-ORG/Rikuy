@@ -51,7 +51,7 @@ export default function DenunciarPage() {
             <CardBody>
               <p className="text-sm text-ink/80 dark:text-milk/80">
                 También podrás compartir videos como prueba. 
-                Estos se registrarán en la red Scroll para asegurar 
+                Estos se registrarán en la red Rikuy Chain para asegurar
                 transparencia y trazabilidad sin comprometer tu identidad.
               </p>
             </CardBody>

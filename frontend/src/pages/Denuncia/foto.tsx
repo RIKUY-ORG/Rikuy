@@ -265,7 +265,7 @@ export default function PhotoPage() {
               <li>✅ IA verificará que la imagen sea apropiada</li>
               <li>✅ Se subirá a IPFS (Pinata) para acceso rápido</li>
               <li>✅ Se guardará en Arkiv por 10 años</li>
-              <li>✅ Se registrará en Scroll (blockchain)</li>
+              <li>✅ Se registrará en Rikuy Chain (blockchain)</li>
               <li>✅ Tu identidad permanecerá 100% anónima</li>
             </ul>
           </div>

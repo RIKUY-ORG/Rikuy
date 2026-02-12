@@ -19,7 +19,7 @@ export default function AyudaPage() {
           <Accordion variant="splitted">
             <AccordionItem key="1" title="¿Cómo denuncio de forma anónima?">
               <p>Para realizar una denuncia anónima, solo necesitas tu billetera o ENS. 
-              La denuncia se publica en la red Scroll sin revelar tu identidad.</p>
+              La denuncia se publica en la red Rikuy Chain sin revelar tu identidad.</p>
             </AccordionItem>
 
             <AccordionItem key="2" title="¿Necesito una billetera o ENS para usar RIKUY?">
@@ -29,7 +29,7 @@ export default function AyudaPage() {
 
             <AccordionItem key="3" title="¿Qué pasa con mis datos?">
               <p>RIKUY no recopila información personal. Tus denuncias se registran en la
-              blockchain de Scroll y permanecen anónimas.</p>
+              blockchain de Rikuy Chain y permanecen anónimas.</p>
             </AccordionItem>
 
             <AccordionItem key="4" title="¿Qué hago si tengo problemas técnicos?">

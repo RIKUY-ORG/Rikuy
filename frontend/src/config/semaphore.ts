@@ -16,10 +16,6 @@ export const SEMAPHORE_CONFIG = {
   GROUP_ID: import.meta.env.VITE_SEMAPHORE_GROUP_ID || '0',
   MERKLE_TREE_DEPTH: 20, // Profundidad estándar de Semaphore
 
-  // Configuración de Scroll
-  SCROLL_RPC_URL: import.meta.env.VITE_SCROLL_RPC_URL || 'https://sepolia-rpc.scroll.io',
-  SCROLL_CHAIN_ID: import.meta.env.VITE_SCROLL_CHAIN_ID || '534351',
-
   // Backend API - Normalizado para evitar dobles slashes
   BACKEND_API_URL: normalizeUrl(import.meta.env.VITE_BACKEND_API_URL || 'http://localhost:3001'),
 };

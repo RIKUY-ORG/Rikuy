@@ -25,7 +25,7 @@ export default function ComoFuncionaPage() {
               <p className="text-sm text-ink/80 dark:text-milk/80">
                 Para garantizar tu anonimato y seguridad, primero debes conectar
                 tu billetera Web3 o tu ENS. Esto permite que la denuncia se
-                registre en la red Scroll sin revelar tu identidad.
+                registre en la red Rikuy Chain sin revelar tu identidad.
               </p>
             </CardBody>
           </Card>
@@ -45,12 +45,12 @@ export default function ComoFuncionaPage() {
 
           <Card className="shadow-lg">
             <CardHeader>
-              <p className="text-lg font-semibold">Paso 3: Publicar en Scroll</p>
+              <p className="text-lg font-semibold">Paso 3: Publicar en Rikuy Chain</p>
             </CardHeader>
             <CardBody>
               <p className="text-sm text-ink/80 dark:text-milk/80">
                 Una vez que confirmes tu denuncia, esta se registrará en la
-                blockchain de Scroll. Esto asegura que la información sea
+                blockchain de Rikuy Chain. Esto asegura que la información sea
                 inmutable y accesible públicamente.
               </p>
             </CardBody>

@@ -126,7 +126,7 @@ export default function IndexPage() {
         <div className="max-w-3xl text-center">
           <p className="text-sm md:text-base text-ink/70 dark:text-milk/70">
             RIKUY busca que ninguna denuncia quede olvidada. Tus evidencias
-            (fotos, videos y audios) se registran de forma segura en Scroll,
+            (fotos, videos y audios) se registran de forma segura en Rikuy Chain,
             preservando el anonimato y evitando la manipulación de datos.
           </p>
         </div>

@@ -8,7 +8,7 @@ import "../interfaces/IReportRegistry.sol";
 /**
  * @title ReportRegistry
  * @notice Storage contract optimizado para reportes
- * @dev Packed struct = 72 bytes (3 slots) para ahorrar gas en Scroll
+ * @dev Packed struct = 72 bytes (3 slots) para ahorrar gas
  */
 contract ReportRegistry is Initializable, AccessControlUpgradeable, IReportRegistry {
 

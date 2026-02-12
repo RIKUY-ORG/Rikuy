@@ -21,7 +21,7 @@ export default function TutorialPage() {
             <AccordionItem key="1" aria-label="Paso 1" title="Paso 1: Conectar tu billetera o ENS">
               <p className="text-sm text-ink/80 dark:text-milk/80">
                 Haz clic en el botón “Conectar billetera” y selecciona tu wallet o ENS.
-                Esto asegura que tu denuncia se registre en Scroll de manera anónima.
+                Esto asegura que tu denuncia se registre en Rikuy Chain de manera anónima.
               </p>
             </AccordionItem>
 
@@ -35,7 +35,7 @@ export default function TutorialPage() {
             <AccordionItem key="3" aria-label="Paso 3" title="Paso 3: Confirmar y publicar">
               <p className="text-sm text-ink/80 dark:text-milk/80">
                 Revisa tu denuncia y confirma. El sistema la registrará en la blockchain
-                de Scroll, garantizando que no pueda ser alterada.
+                de Rikuy Chain, garantizando que no pueda ser alterada.
               </p>
             </AccordionItem>
 
