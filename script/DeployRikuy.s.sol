@@ -3,12 +3,9 @@ pragma solidity ^0.8.23;
 
 import "forge-std/Script.sol";
 import "../contracts/solidity/core/RikuyCoreV2.sol";
-import "../contracts/solidity/core/Treasury.sol";
 import "../contracts/solidity/core/ReportRegistry.sol";
-import "../contracts/solidity/zk/MockSemaphoreAdapter.sol";
 import "../contracts/solidity/governance/GovernmentRegistry.sol";
 import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 /**
  * @title DeployRikuy
@@ -17,77 +14,59 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
  * REDES SOPORTADAS:
  * - Arbitrum Sepolia (chainId: 421614)
  * - Arbitrum One (chainId: 42161)
- * - Rikuy Chain L3 (chainId: custom)
+ * - Rikuy Chain L3 (chainId: 313370)
  * - Local (Anvil) para testing
  *
  * ORDEN DE DEPLOY:
- * 1. MockUSX (token de prueba)
- * 2. ReportRegistry (storage)
- * 3. MockSemaphoreAdapter (ZK mock - reemplazar en producción)
- * 4. Treasury (fondos y recompensas)
- * 5. RikuyCoreV2 (lógica principal)
- * 6. GovernmentRegistry (permisos gobierno)
+ * 1. ReportRegistry (storage)
+ * 2. RikuyCoreV2 (lógica principal + Stylus AnonymousReport)
+ * 3. GovernmentRegistry (permisos gobierno)
  *
  * USAGE:
  * Arbitrum Sepolia: forge script script/DeployRikuy.s.sol --rpc-url arbitrum_sepolia --broadcast
  * Rikuy Chain:      forge script script/DeployRikuy.s.sol --rpc-url rikuy_chain --broadcast
  * Local:            forge script script/DeployRikuy.s.sol --rpc-url localhost --broadcast
  */
-
-/// @notice Simple ERC20 mock for testing rewards
-contract MockUSXToken is ERC20 {
-    constructor() ERC20("Mock USX Token", "mUSX") {
-        _mint(msg.sender, 1_000_000 * 1e18); // 1M tokens
-    }
-}
-
 contract DeployRikuy is Script {
     // Chain IDs
     uint256 constant ARBITRUM_SEPOLIA = 421614;
     uint256 constant ARBITRUM_ONE = 42161;
+    uint256 constant RIKUY_CHAIN = 313370;
 
     // Deployer
     address public deployer;
 
-    // Contratos desplegados
-    MockUSXToken public mockUSX;
+    // Deployed contracts
     RikuyCoreV2 public rikuyCore;
-    RikuyTreasury public treasury;
     ReportRegistry public reportRegistry;
-    MockSemaphoreAdapter public semaphoreAdapter;
     GovernmentRegistry public governmentRegistry;
 
     // Proxies
     address public rikuyCoreProxy;
-    address public treasuryProxy;
     address public reportRegistryProxy;
 
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         deployer = vm.addr(deployerPrivateKey);
 
+        // AnonymousReport Stylus contract (deployed separately via cargo-stylus)
+        address anonymousReportAddress = vm.envOr("ANONYMOUS_REPORT_ADDRESS", address(0));
+
         console.log("============================================");
         console.log("RIKUY NETWORK - Deployment Script");
         console.log("============================================");
         console.log("Deployer:", deployer);
         console.log("Chain ID:", block.chainid);
+        console.log("AnonymousReport (Stylus):", anonymousReportAddress);
         console.log("--------------------------------------------");
 
         vm.startBroadcast(deployerPrivateKey);
 
         // ==========================================
-        // STEP 1: Deploy MockUSX Token
+        // STEP 1: Deploy ReportRegistry (with Proxy)
         // ==========================================
-        console.log("\n[1/6] Deploying MockUSX Token...");
-        mockUSX = new MockUSXToken();
-        console.log("      MockUSX:", address(mockUSX));
-        console.log("      Balance:", mockUSX.balanceOf(deployer) / 1e18, "mUSX");
+        console.log("\n[1/3] Deploying ReportRegistry...");
 
-        // ==========================================
-        // STEP 2: Deploy ReportRegistry (with Proxy)
-        // ==========================================
-        console.log("\n[2/6] Deploying ReportRegistry...");
-        
         ReportRegistry registryImpl = new ReportRegistry();
         console.log("      Implementation:", address(registryImpl));
 
@@ -104,40 +83,10 @@ contract DeployRikuy is Script {
         console.log("      Proxy:", reportRegistryProxy);
 
         // ==========================================
-        // STEP 3: Deploy MockSemaphoreAdapter
+        // STEP 2: Deploy RikuyCoreV2 (UUPS Proxy)
         // ==========================================
-        console.log("\n[3/6] Deploying MockSemaphoreAdapter...");
-        console.log("      WARNING: This is a MOCK - Replace for production!");
-        
-        semaphoreAdapter = new MockSemaphoreAdapter();
-        console.log("      MockSemaphoreAdapter:", address(semaphoreAdapter));
+        console.log("\n[2/3] Deploying RikuyCoreV2...");
 
-        // ==========================================
-        // STEP 4: Deploy Treasury (UUPS Proxy)
-        // ==========================================
-        console.log("\n[4/6] Deploying Treasury...");
-        
-        RikuyTreasury treasuryImpl = new RikuyTreasury();
-        console.log("      Implementation:", address(treasuryImpl));
-
-        bytes memory treasuryInitData = abi.encodeWithSelector(
-            RikuyTreasury.initialize.selector,
-            deployer,
-            address(mockUSX)
-        );
-        ERC1967Proxy treasuryProxyContract = new ERC1967Proxy(
-            address(treasuryImpl),
-            treasuryInitData
-        );
-        treasuryProxy = address(treasuryProxyContract);
-        treasury = RikuyTreasury(payable(treasuryProxy));
-        console.log("      Proxy:", treasuryProxy);
-
-        // ==========================================
-        // STEP 5: Deploy RikuyCoreV2 (UUPS Proxy)
-        // ==========================================
-        console.log("\n[5/6] Deploying RikuyCoreV2...");
-        
         RikuyCoreV2 rikuyCoreImpl = new RikuyCoreV2();
         console.log("      Implementation:", address(rikuyCoreImpl));
 
@@ -145,8 +94,7 @@ contract DeployRikuy is Script {
             RikuyCoreV2.initialize.selector,
             deployer,
             reportRegistryProxy,
-            treasuryProxy,
-            address(semaphoreAdapter)
+            anonymousReportAddress
         );
         ERC1967Proxy coreProxyContract = new ERC1967Proxy(
             address(rikuyCoreImpl),
@@ -157,9 +105,9 @@ contract DeployRikuy is Script {
         console.log("      Proxy:", rikuyCoreProxy);
 
         // ==========================================
-        // STEP 6: Deploy GovernmentRegistry
+        // STEP 3: Deploy GovernmentRegistry
         // ==========================================
-        console.log("\n[6/6] Deploying GovernmentRegistry...");
+        console.log("\n[3/3] Deploying GovernmentRegistry...");
         governmentRegistry = new GovernmentRegistry(deployer);
         console.log("      GovernmentRegistry:", address(governmentRegistry));
 
@@ -171,9 +119,7 @@ contract DeployRikuy is Script {
 
         // Grant roles
         reportRegistry.grantRole(reportRegistry.CORE_ROLE(), rikuyCoreProxy);
-        treasury.grantRole(treasury.OPERATOR_ROLE(), rikuyCoreProxy);
         rikuyCore.grantRole(rikuyCore.GOVERNMENT_ROLE(), deployer);
-        treasury.grantRole(treasury.GOVERNMENT_ROLE(), deployer);
 
         // Register test government
         governmentRegistry.registerGovernment(
@@ -181,12 +127,6 @@ contract DeployRikuy is Script {
             "Rikuy Test Government",
             _getNetworkName()
         );
-
-        // Fund treasury
-        uint256 fundAmount = 100_000 * 1e18; // 100k tokens
-        mockUSX.approve(treasuryProxy, fundAmount);
-        treasury.depositFunds(fundAmount);
-        console.log("Treasury funded with: 100,000 mUSX");
 
         vm.stopBroadcast();
 
@@ -199,24 +139,24 @@ contract DeployRikuy is Script {
         console.log("Network:            ", _getNetworkName());
         console.log("Chain ID:           ", block.chainid);
         console.log("--------------------------------------------");
-        console.log("MockUSX:            ", address(mockUSX));
         console.log("ReportRegistry:     ", reportRegistryProxy);
-        console.log("Treasury:           ", treasuryProxy);
         console.log("RikuyCoreV2:        ", rikuyCoreProxy);
-        console.log("SemaphoreAdapter:   ", address(semaphoreAdapter));
+        console.log("AnonymousReport:    ", anonymousReportAddress);
         console.log("GovernmentRegistry: ", address(governmentRegistry));
         console.log("============================================");
         console.log("\nNext steps:");
-        console.log("1. Update .env with contract addresses");
-        console.log("2. Set NETWORK=rikuy (or arbitrum)");
-        console.log("3. Restart backend: npm run dev");
+        console.log("1. Deploy Stylus contract: make deploy-stylus RPC=<url> KEY=<key>");
+        console.log("2. Update .env with contract addresses");
+        console.log("3. Set NETWORK=rikuy");
+        console.log("4. Restart backend: pnpm dev");
         console.log("============================================\n");
     }
 
     function _getNetworkName() internal view returns (string memory) {
         if (block.chainid == ARBITRUM_SEPOLIA) return "Arbitrum Sepolia";
         if (block.chainid == ARBITRUM_ONE) return "Arbitrum One";
+        if (block.chainid == RIKUY_CHAIN) return "Rikuy Chain L3";
         if (block.chainid == 31337) return "Local (Anvil)";
-        return "Rikuy Chain L3";
+        return "Unknown Network";
     }
 }

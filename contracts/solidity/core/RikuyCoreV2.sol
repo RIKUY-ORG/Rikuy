@@ -4,30 +4,30 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
 import "../interfaces/IReportRegistry.sol";
-import "../interfaces/ITreasury.sol";
-import "../zk/SemaphoreAdapter.sol";
+import "../interfaces/IAnonymousReport.sol";
 
 /**
  * @title RikuyCoreV2
- * @notice Contrato principal de RIKUY - Versión con Backend Relayer
- * @dev Backend firma transacciones en nombre del usuario (paga gas)
- *      Usuario genera ZK proof localmente (privacidad mantenida)
+ * @notice Contrato principal de RIKUY - Orquesta denuncias anónimas
+ * @dev Backend Relayer firma transacciones en nombre del usuario (paga gas).
+ *      La lógica de anonimato y almacenamiento de reportes vive en el
+ *      contrato Stylus (AnonymousReport.rs) para eficiencia WASM.
  *
  * Flujo:
- * 1. Usuario genera ZK proof en su dispositivo (privado)
- * 2. Usuario envía proof al backend (HTTP)
- * 3. Backend verifica proof y crea TX on-chain
- * 4. Backend paga gas → Usuario no necesita ETH
+ * 1. Usuario crea denuncia en frontend (foto, descripción, ubicación)
+ * 2. Backend genera commitment anónimo: hash(wallet + salt + nonce)
+ * 3. Backend envía TX via Relayer → RikuyCoreV2.createReport()
+ * 4. RikuyCoreV2 delega al contrato Stylus para storage + nullifier check
+ * 5. Gas subsidiado → Usuario no paga nada
  */
 contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
 
     bytes32 public constant GOVERNMENT_ROLE = keccak256("GOVERNMENT");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR");
-    bytes32 public constant RELAYER_ROLE = keccak256("RELAYER"); // Backend wallet
+    bytes32 public constant RELAYER_ROLE = keccak256("RELAYER");
 
     IReportRegistry public reportRegistry;
-    ITreasury public treasury;
-    SemaphoreAdapter public semaphoreAdapter;
+    IAnonymousReport public anonymousReport; // Stylus contract
 
     uint8 public constant VERIFICATION_THRESHOLD = 5;
 
@@ -40,8 +40,8 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
 
     event ReportCreated(
         bytes32 indexed reportId,
-        uint256 indexed nullifier,
-        bytes32 arkivTxId,
+        bytes32 indexed commitment,
+        bytes32 contentHash,
         uint16 category,
         uint256 timestamp
     );
@@ -65,8 +65,7 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
     function initialize(
         address _admin,
         address _reportRegistry,
-        address _treasury,
-        address _semaphoreAdapter
+        address _anonymousReport
     ) public initializer {
         __AccessControl_init();
 
@@ -74,71 +73,74 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
         _grantRole(OPERATOR_ROLE, _admin);
 
         reportRegistry = IReportRegistry(_reportRegistry);
-        treasury = ITreasury(_treasury);
-        semaphoreAdapter = SemaphoreAdapter(_semaphoreAdapter);
+        anonymousReport = IAnonymousReport(_anonymousReport);
     }
 
     /**
-     * @notice Agregar backend wallet como relayer (puede crear reportes)
-     * @param _relayer Dirección del backend wallet
+     * @notice Agregar backend wallet como relayer
      */
     function addRelayer(address _relayer) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(RELAYER_ROLE, _relayer);
     }
 
     /**
-     * @notice Crear reporte anónimo con ZK proof (versión Backend Relayer)
-     * @param _arkivTxId Hash de transacción en Arkiv (evidencia inmutable)
-     * @param _categoryId Categoría del incidente
-     * @param _zkProof Proof Groth16 [pA[2], pB[4], pC[2]]
-     * @param _pubSignals Public signals [nullifier, merkleRoot, message, scope]
-     * @dev Solo puede ser llamado por RELAYER (backend wallet)
-     *      Usuario genera proof localmente → Backend solo envía TX
+     * @notice Crear denuncia anónima (v2 - Stylus backed)
+     * @param _contentHash Hash de la evidencia (foto + descripción)
+     * @param _categoryId Categoría del incidente (0-4)
+     * @param _commitment Identidad anónima del denunciante
+     * @param _nullifier Nullifier único para evitar doble-denuncia
+     * @param _latitude Latitud (* 1_000_000 para precisión)
+     * @param _longitude Longitud (* 1_000_000 para precisión)
+     * @param _aiValidated Si la AI validó el contenido como legítimo
+     * @dev Solo puede ser llamado por RELAYER (backend wallet).
+     *      El commitment se genera en backend: keccak256(wallet + salt + nonce)
+     *      donde salt es secreto del backend → el commitment no revela identidad.
      */
     function createReport(
-        bytes32 _arkivTxId,
+        bytes32 _contentHash,
         uint16 _categoryId,
-        uint256[8] calldata _zkProof,
-        uint256[4] calldata _pubSignals
+        bytes32 _commitment,
+        bytes32 _nullifier,
+        int64 _latitude,
+        int64 _longitude,
+        bool _aiValidated
     ) external onlyRole(RELAYER_ROLE) returns (bytes32 reportId) {
-
-        require(_categoryId <= 4, "Invalid category"); // 0-4 según spec
-
-        // Decodificar proof Groth16
-        uint256[2] memory pA = [_zkProof[0], _zkProof[1]];
-        uint256[2][2] memory pB = [[_zkProof[2], _zkProof[3]], [_zkProof[4], _zkProof[5]]];
-        uint256[2] memory pC = [_zkProof[6], _zkProof[7]];
-
-        // Verificar ZK proof usando Semaphore
-        bool isValidProof = semaphoreAdapter.verifyProof(pA, pB, pC, _pubSignals);
-        require(isValidProof, "Invalid ZK proof");
-
-        // Validar proof on-chain (marca nullifier como usado)
-        semaphoreAdapter.validateProof(pA, pB, pC, _pubSignals);
-
-        // Extraer nullifier
-        uint256 nullifier = _pubSignals[0];
 
         // Generar ID único del reporte
         reportId = keccak256(abi.encodePacked(
-            nullifier,
+            _commitment,
+            _nullifier,
             block.timestamp,
-            _arkivTxId,
+            _contentHash,
             _categoryId
         ));
 
-        // Guardar en registry
+        // Delegar almacenamiento al contrato Stylus (WASM)
+        // Stylus valida: categoría, geo-bounds Bolivia, nullifier único
+        anonymousReport.storeReport(
+            reportId,
+            _commitment,
+            _contentHash,
+            _nullifier,
+            _categoryId,
+            _latitude,
+            _longitude,
+            _aiValidated
+        );
+
+        // También guardar en ReportRegistry para compatibilidad con
+        // el flujo de validación/resolución existente
         reportRegistry.storeReport(
             reportId,
-            _arkivTxId,
-            bytes32(nullifier),
+            _contentHash,       // content hash como arkivTxId
+            _nullifier,         // nullifier como nullifierHash
             _categoryId
         );
 
         emit ReportCreated(
             reportId,
-            nullifier,
-            _arkivTxId,
+            _commitment,
+            _contentHash,
             _categoryId,
             block.timestamp
         );
@@ -147,18 +149,24 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
     }
 
     /**
+     * @notice Registrar commitment de ciudadano verificado
+     * @param _commitment El commitment anónimo a registrar
+     * @dev Se llama después de que Reclaim Protocol verifica ciudadanía
+     */
+    function registerCitizen(bytes32 _commitment) external onlyRole(RELAYER_ROLE) {
+        anonymousReport.registerCommitment(_commitment);
+    }
+
+    /**
      * @notice Validar reporte (votar si es real o no)
      * @param _reportId ID del reporte
      * @param _isValid true = es real, false = es falso
-     * @dev Cualquiera puede validar (ciudadanos verificando reportes)
      */
     function validateReport(bytes32 _reportId, bool _isValid) external {
-        IReportRegistry.Report memory report = reportRegistry.getReport(_reportId);
-        require(report.timestamp > 0, "Report does not exist");
-        require(!report.isResolved, "Report already resolved");
+        require(anonymousReport.reportExists(_reportId), "Report does not exist");
+        require(!anonymousReport.isReportResolved(_reportId), "Report already resolved");
         require(!reportRegistry.hasUserValidated(_reportId, msg.sender), "Already validated");
 
-        // Registrar validación
         reportRegistry.recordValidation(_reportId, msg.sender);
 
         if (_isValid) {
@@ -172,7 +180,7 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
 
         // Auto-verificar si alcanza threshold
         if (reportUpvotes[_reportId] >= VERIFICATION_THRESHOLD) {
-            reportRegistry.incrementValidationScore(_reportId);
+            anonymousReport.incrementValidation(_reportId);
             emit ReportVerified(_reportId, reportUpvotes[_reportId]);
         }
     }
@@ -180,35 +188,21 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
     /**
      * @notice Resolver reporte (solo gobierno)
      * @param _reportId ID del reporte
-     * @param _approved true = aprobar y pagar, false = rechazar
+     * @param _approved true = aprobar, false = rechazar
      */
     function resolveReport(bytes32 _reportId, bool _approved)
         external
         onlyRole(GOVERNMENT_ROLE)
     {
-        IReportRegistry.Report memory report = reportRegistry.getReport(_reportId);
-        require(report.timestamp > 0, "Report does not exist");
-        require(!report.isResolved, "Already resolved");
+        require(anonymousReport.reportExists(_reportId), "Report does not exist");
+        require(!anonymousReport.isReportResolved(_reportId), "Already resolved");
         require(reportUpvotes[_reportId] >= VERIFICATION_THRESHOLD, "Not enough validations");
 
-        // Marcar como resuelto
+        // Marcar como resuelto en Stylus y ReportRegistry
+        anonymousReport.resolveReport(_reportId);
         reportRegistry.markAsResolved(_reportId);
 
         ReportStatus finalStatus = _approved ? ReportStatus.Resolved : ReportStatus.Disputed;
-
-        // Si aprobado, liberar recompensas
-        if (_approved) {
-            address[] memory validators = reportValidators[_reportId];
-
-            // IMPORTANTE: No podemos pagar al reporter porque es anónimo
-            // La recompensa se maneja off-chain o via otro mecanismo
-            treasury.releaseRewards(
-                _reportId,
-                report.categoryId,
-                address(0), // Reporter anónimo (no podemos pagar on-chain)
-                validators
-            );
-        }
 
         emit ReportResolved(_reportId, finalStatus, msg.sender);
     }
@@ -227,12 +221,10 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
             bool isResolved
         )
     {
-        IReportRegistry.Report memory report = reportRegistry.getReport(_reportId);
-
         upvotes = reportUpvotes[_reportId];
         downvotes = reportDownvotes[_reportId];
         isVerified = upvotes >= VERIFICATION_THRESHOLD;
-        isResolved = report.isResolved;
+        isResolved = anonymousReport.isReportResolved(_reportId);
 
         if (isResolved) {
             status = ReportStatus.Resolved;
