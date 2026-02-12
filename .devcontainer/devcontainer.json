@@ -1,0 +1,42 @@
+{
+  "name": "Rikuy Development Environment",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "1.88",
+      "targets": "wasm32-unknown-unknown"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20"
+    }
+  },
+  "forwardPorts": [8449, 8547, 3001, 5173, 4000],
+  "portsAttributes": {
+    "8449": { "label": "Rikuy Chain L3 RPC" },
+    "8547": { "label": "Nitro Devnode RPC" },
+    "3001": { "label": "Backend API" },
+    "5173": { "label": "Frontend Dev" },
+    "4000": { "label": "Block Explorer" }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "esbenp.prettier-vscode",
+        "JuanBlanco.solidity",
+        "NomicFoundation.hardhat-solidity",
+        "tamasfe.even-better-toml",
+        "bradlc.vscode-tailwindcss"
+      ],
+      "settings": {
+        "rust-analyzer.check.command": "clippy",
+        "editor.formatOnSave": true
+      }
+    }
+  }
+}
