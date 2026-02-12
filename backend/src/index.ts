@@ -77,7 +77,7 @@ app.listen(PORT, () => {
   logger.info({
     port: PORT,
     environment: config.nodeEnv,
-    scrollRpc: config.blockchain.rpcUrl,
+    rpc: config.blockchain.rpcUrl,
     arkivRpc: config.arkiv.rpcUrl,
   }, 'Rikuy Backend started successfully');
 

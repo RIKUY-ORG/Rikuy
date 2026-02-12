@@ -28,12 +28,8 @@ export const config = {
     contracts: {
       rikuyCoreV2: networkConfig.contracts.rikuyCoreV2,
       reportRegistry: networkConfig.contracts.reportRegistry,
-      treasury: networkConfig.contracts.treasury,
       governmentRegistry: networkConfig.contracts.governmentRegistry,
-      semaphoreAdapter: networkConfig.contracts.semaphoreAdapter,
-      semaphoreAddress: networkConfig.contracts.semaphoreAddress,
-      semaphoreGroupId: networkConfig.contracts.semaphoreGroupId,
-      mockUsx: networkConfig.contracts.mockUsx,
+      anonymousReport: networkConfig.contracts.anonymousReport,
     },
   },
 

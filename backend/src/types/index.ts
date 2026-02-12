@@ -8,11 +8,6 @@ export enum ReportCategory {
   OTRO = 4
 }
 
-export interface ZKProof {
-  proof: string[];
-  publicSignals: string[];
-}
-
 export interface CreateReportRequest {
   photo: Express.Multer.File;
   category: ReportCategory;
@@ -22,8 +17,7 @@ export interface CreateReportRequest {
     long: number;
     accuracy: number;
   };
-  zkProof: ZKProof;
-  userSecret?: string;
+  walletAddress?: string; // From Privy embedded wallet
 }
 
 export interface CreateReportResponse {
@@ -37,7 +31,7 @@ export interface CreateReportResponse {
   mensaje: string;
   _internal?: {
     arkivTxId: string;
-    scrollTxHash: string;
+    txHash: string;
     gasUsed?: string;
     gasCost?: string;
   };
@@ -64,10 +58,6 @@ export interface ArkivReportData {
       lat: number;
       long: number;
       precision: string;
-    };
-    zkProof?: {
-      nullifier: string;
-      verified: boolean;
     };
   };
   metadata: {

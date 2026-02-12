@@ -3,7 +3,6 @@ import { ipfsService } from './ipfs.service';
 import { aiService } from './ai.service';
 import { arkivService } from './arkiv.service';
 import { relayerService } from './relayer.service';
-import { semaphoreService } from './semaphore.service';
 import { getServiceLogger } from '../utils/logger';
 import { config } from '../config';
 import {
@@ -13,42 +12,25 @@ import {
   createErrorFromException,
 } from '../utils/errors';
 import crypto from 'crypto';
+import { ethers } from 'ethers';
 
 const logger = getServiceLogger('ReportRelayerService');
 
-interface CreateReportWithProofRequest extends CreateReportRequest {
-  zkProof: {
-    proof: string[];
-    publicSignals: string[];
-  };
-}
-
 class ReportRelayerService {
 
-  async createReport(request: CreateReportWithProofRequest): Promise<CreateReportResponse> {
+  /**
+   * Crear denuncia anónima — flujo completo:
+   * 1. Upload foto a IPFS
+   * 2. AI analiza imagen
+   * 3. Almacenar metadata en Arkiv
+   * 4. Generar commitment anónimo + nullifier
+   * 5. Enviar TX a blockchain via Relayer
+   */
+  async createReport(request: CreateReportRequest): Promise<CreateReportResponse> {
     const startTime = Date.now();
 
     try {
       logger.info('Starting report creation with relayer');
-
-      // MODO DESARROLLO: Warning si estamos aceptando proofs dummy
-      if (config.devMode) {
-        logger.warn('⚠️  DEV MODE ACTIVE: ZK proofs are NOT being verified! DO NOT USE IN PRODUCTION!');
-      }
-
-      logger.info('Step 0: Verifying ZK proof');
-      const proofResult = await semaphoreService.verifyProof(request.zkProof);
-
-      if (!proofResult.isValid) {
-        throw new Error(`Invalid ZK proof: ${proofResult.error}`);
-      }
-
-      const nullifierUsed = await semaphoreService.isNullifierUsed(proofResult.nullifier!);
-      if (nullifierUsed) {
-        throw new Error('This proof has already been used');
-      }
-
-      logger.info({ nullifier: proofResult.nullifier }, 'ZK proof verified successfully');
 
       this.validateLocation(request.location);
 
@@ -72,7 +54,7 @@ class ReportRelayerService {
 
       const reportId = this.generateReportId(fileHash, request.location);
 
-      logger.info('Step 3: Storing in Arkiv');
+      logger.info('Step 3: Storing metadata in Arkiv');
       const arkivData: ArkivReportData = {
         protocol: 'rikuy-v1',
         version: '2.0.0',
@@ -95,10 +77,6 @@ class ReportRelayerService {
             long: this.roundCoordinate(request.location.long),
             precision: '~200m',
           },
-          zkProof: {
-            nullifier: request.zkProof.publicSignals[0],
-            verified: true,
-          },
         },
         metadata: {
           deviceHash: this.generateDeviceHash(request),
@@ -108,14 +86,37 @@ class ReportRelayerService {
 
       const arkivTxId = await arkivService.storeReport(arkivData);
 
-      logger.info('Step 4: Creating on blockchain via Relayer');
-      const relayerResult = await relayerService.createReport({
-        arkivTxId,
-        categoryId: request.category,
-        zkProof: request.zkProof,
-      });
+      logger.info('Step 4: Generating anonymous commitment');
+      // El wallet address viene del header x-user-address (set by Privy)
+      const walletAddress = (request as any).walletAddress || ethers.ZeroAddress;
+      const nonce = Date.now();
+      const commitment = relayerService.generateCommitment(walletAddress, nonce);
+      const nullifier = relayerService.generateNullifier(commitment, fileHash);
 
-      const estimatedReward = this.calculateEstimatedReward(request.category, aiAnalysis.severity);
+      // Generar contentHash: hash de la evidencia completa
+      const contentHash = ethers.keccak256(
+        ethers.toUtf8Bytes(JSON.stringify({
+          ipfsHash,
+          fileHash,
+          description,
+          category: request.category,
+        }))
+      );
+
+      // Coordenadas multiplicadas por 1_000_000 para precisión entera
+      const latitude = Math.round(request.location.lat * 1_000_000);
+      const longitude = Math.round(request.location.long * 1_000_000);
+
+      logger.info('Step 5: Creating report on blockchain via Relayer');
+      const relayerResult = await relayerService.createReport({
+        contentHash,
+        categoryId: request.category,
+        commitment,
+        nullifier,
+        latitude,
+        longitude,
+        aiValidated: aiAnalysis.severity > 0,
+      });
 
       const duration = Date.now() - startTime;
       logger.info({
@@ -130,13 +131,13 @@ class ReportRelayerService {
         reportId: relayerResult.reportId,
         status: 'confirmado' as const,
         recompensa: {
-          puntos: estimatedReward,
-          mensaje: `Podrás ganar hasta ${estimatedReward} puntos cuando tu reporte sea validado`,
+          puntos: 0,
+          mensaje: 'Tu reporte será validado por la comunidad',
         },
         mensaje: '¡Reporte creado exitosamente! Está siendo procesado por la comunidad.',
         _internal: {
           arkivTxId,
-          scrollTxHash: relayerResult.txHash,
+          txHash: relayerResult.txHash,
           gasUsed: relayerResult.gasUsed,
           gasCost: relayerResult.gasCost,
         },
@@ -187,12 +188,11 @@ class ReportRelayerService {
   }
 
   private validateLocation(location: { lat: number; long: number }) {
-    // Coordenadas de Bolivia
     const { latMin, latMax, longMin, longMax } = {
-      latMin: -23.0,  // Sur de Bolivia
-      latMax: -9.5,   // Norte de Bolivia
-      longMin: -70.0, // Oeste de Bolivia
-      longMax: -57.0, // Este de Bolivia
+      latMin: -23.0,
+      latMax: -9.5,
+      longMin: -70.0,
+      longMax: -57.0,
     };
 
     if (
@@ -228,13 +228,6 @@ class ReportRelayerService {
       4: 'Otro',
     };
     return names[category] || 'Otro';
-  }
-
-  private calculateEstimatedReward(category: ReportCategory, severity: number): number {
-    const basePoints = 100;
-    const categoryMultiplier = category === 3 ? 2 : 1;
-    const severityBonus = severity * 10;
-    return basePoints + severityBonus * categoryMultiplier;
   }
 
   private async getBlockchainStatus(reportId: string) {
