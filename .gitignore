@@ -31,6 +31,13 @@ broadcast/
 !package.json
 !tsconfig.json
 !backend/src/contracts/abis/*.json
+!frontend/src/config/contracts.json
+!pnpm-workspace.yaml
+!.devcontainer/devcontainer.json
+
+# Stylus / Rust
+contracts/stylus/target/
+**/*.wasm
 
 # IDE
 .vscode/
