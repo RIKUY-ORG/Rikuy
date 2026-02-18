@@ -3,7 +3,7 @@
  */
 import { useState, useEffect } from 'react';
 import { usePrivy } from '@privy-io/react-auth';
-import { SEMAPHORE_CONFIG } from '@/config/semaphore';
+import { RIKUY_CONFIG } from '@/config/rikuy';
 
 interface IdentityStatus {
   isVerified: boolean;
@@ -40,23 +40,22 @@ export function useIdentityStatus() {
         setStatus(prev => ({ ...prev, isLoading: true, error: null }));
 
         // Primero verificar localStorage (fuente de verdad local)
-        const identitySecret = localStorage.getItem('rikuy_identity_secret');
+        const isVerified = localStorage.getItem('rikuy_verified');
+        const commitment = localStorage.getItem('rikuy_commitment');
 
-        if (identitySecret) {
-          // Si tenemos el identity secret en localStorage, el usuario YA está verificado
-          // (aunque el backend haya perdido la info por reinicio)
-          console.log('[useIdentityStatus] Found identity secret in localStorage - user is verified');
+        if (isVerified) {
+          console.log('[useIdentityStatus] Found verified status in localStorage');
           setStatus({
             isVerified: true,
             isLoading: false,
             error: null,
-            commitment: identitySecret,
+            commitment: commitment,
           });
           return;
         }
 
         // Si no hay nada en localStorage, verificar con el backend
-        const url = `${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/identity/status?userAddress=${user.wallet.address}`;
+        const url = `${RIKUY_CONFIG.BACKEND_API_URL}/api/identity/status?walletAddress=${user.wallet.address}`;
         console.log('[useIdentityStatus] Fetching:', url);
 
         const response = await fetch(url, {
@@ -74,7 +73,7 @@ export function useIdentityStatus() {
             isVerified: data.data.isVerified || false,
             isLoading: false,
             error: null,
-            commitment: data.data.identityCommitment || null,
+            commitment: data.data.commitment || null,
           });
         } else {
           setStatus({
@@ -88,14 +87,14 @@ export function useIdentityStatus() {
         console.error('[useIdentityStatus] Error checking identity status:', error);
 
         // Incluso si el backend falla, verificar localStorage como fallback
-        const identitySecret = localStorage.getItem('rikuy_identity_secret');
-        if (identitySecret) {
+        const isVerified = localStorage.getItem('rikuy_verified');
+        if (isVerified) {
           console.log('[useIdentityStatus] Backend failed but found localStorage - user is verified');
           setStatus({
             isVerified: true,
             isLoading: false,
             error: null,
-            commitment: identitySecret,
+            commitment: localStorage.getItem('rikuy_commitment'),
           });
         } else {
           setStatus({

@@ -16,7 +16,7 @@ import { I18nProvider } from '@react-aria/i18n';
 import { today,getLocalTimeZone } from "@internationalized/date";
 import { Select,SelectItem } from "@heroui/select";
 import DragDropFile from '@/components/drag&dropFile';
-import { SEMAPHORE_CONFIG } from '@/config/semaphore';
+import { RIKUY_CONFIG } from '@/config/rikuy';
 import { ReclaimVerification } from '@/components/ReclaimVerification'; // Importar componente
 
 export default function VerificarIdentidadPage() {
@@ -108,21 +108,21 @@ export default function VerificarIdentidadPage() {
     setIsSubmitting(true);
 
     try {
-      const formData = new FormData();
-      formData.append('firstName',firstName);
-      formData.append('lastName',lastName);
-      formData.append('documentImage',documentImage);
-      formData.append('documentType','CI');
-      formData.append('documentNumber',documentNumber);
-      formData.append('dateOfBirth',dateOfBirth);
-      formData.append('expedition',expedition);
-      formData.append('userAddress',user.wallet.address);
+      const body = {
+        ci: documentNumber,
+        fullName: `${firstName} ${lastName}`,
+        walletAddress: user.wallet.address,
+      };
 
       const response = await fetch(
-        `${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/identity/verify`,
+        `${RIKUY_CONFIG.BACKEND_API_URL}/api/identity/verify`,
         {
           method: 'POST',
-          body: formData,
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-address': user.wallet.address,
+          },
+          body: JSON.stringify(body),
         }
       );
 
@@ -135,13 +135,10 @@ export default function VerificarIdentidadPage() {
           color: 'success',
         });
 
-        if (result.data?.identity?.commitment) {
-          localStorage.setItem('rikuy_commitment',result.data.identity.commitment);
-          localStorage.setItem('rikuy_verified','true');
+        if (result.data?.commitment) {
+          localStorage.setItem('rikuy_commitment', result.data.commitment);
         }
-        if (result.data?.identity?.secret) {
-          localStorage.setItem('rikuy_identity_secret',result.data.identity.secret);
-        }
+        localStorage.setItem('rikuy_verified', 'true');
 
         setTimeout(() => {
           navigate('/denunciar');

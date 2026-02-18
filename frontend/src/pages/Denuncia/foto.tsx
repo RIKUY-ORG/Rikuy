@@ -7,8 +7,7 @@ import DefaultLayout from "@/layouts/default";
 import { addToast } from "@heroui/toast";
 import { Button } from "@heroui/button";
 import { usePrivy } from "@privy-io/react-auth";
-import { Identity } from "@semaphore-protocol/core";
-import { SEMAPHORE_CONFIG } from "@/config/semaphore";
+import { RIKUY_CONFIG, STORAGE_KEYS } from "@/config/rikuy";
 
 const videoConstraints = {
   width: 1280,
@@ -83,6 +82,17 @@ export default function PhotoPage() {
       return;
     }
 
+    // Verificar que el usuario esta verificado
+    const isVerified = localStorage.getItem(STORAGE_KEYS.VERIFIED);
+    if (!isVerified) {
+      addToast({
+        title: "Error",
+        description: "Debes verificar tu identidad antes de denunciar",
+        color: "danger",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -95,48 +105,27 @@ export default function PhotoPage() {
       const location = {
         lat: position.coords.latitude,
         long: position.coords.longitude,
-        accuracy: position.coords.accuracy || 10, // Precisión en metros
+        accuracy: position.coords.accuracy || 10,
       };
 
-      // Paso 2: Generar ZK proof
-      setUploadStatus("Generando prueba de identidad anónima...");
-
-      // Recuperar identity secret del localStorage (guardado en verificación)
-      const identitySecret = localStorage.getItem('rikuy_identity_secret');
-      if (!identitySecret) {
-        throw new Error('No se encontró tu identidad verificada. Por favor verifica tu identidad primero.');
-      }
-
-      const identity = new Identity(identitySecret);
-
-      // Generar proof simple (sin grupo por ahora)
-      const zkProof = {
-        proof: ['0', '0', '0', '0', '0', '0', '0', '0'], // 8 elementos requeridos
-        publicSignals: [
-          identity.commitment.toString(), // nullifier
-          '0', // merkleTreeRoot
-          '0', // message
-          '0', // scope
-        ],
-      };
-
-      // Paso 3: Convertir imagen base64 a blob
+      // Paso 2: Convertir imagen base64 a blob
       setUploadStatus("Verificando imagen con IA...");
       const blob = await fetch(imageSrc).then(r => r.blob());
 
-      // Paso 4: Preparar FormData
+      // Paso 3: Preparar FormData
       const formData = new FormData();
       formData.append('photo', blob, 'denuncia.jpg');
-      formData.append('category', '0'); // Categoría por defecto
+      formData.append('category', '0');
       formData.append('description', 'Denuncia anónima');
       formData.append('location', JSON.stringify(location));
-      formData.append('zkProof', JSON.stringify(zkProof));
-      formData.append('userSecret', identitySecret);
 
-      // Paso 5: Enviar al backend
+      // Paso 4: Enviar al backend (commitment y nullifier se generan en el backend)
       setUploadStatus("Subiendo a IPFS, Arkiv y Blockchain...");
-      const response = await fetch(`${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/reports`, {
+      const response = await fetch(`${RIKUY_CONFIG.BACKEND_API_URL}/api/reports`, {
         method: 'POST',
+        headers: {
+          'x-user-address': user.wallet.address,
+        },
         body: formData,
       });
 
@@ -146,21 +135,17 @@ export default function PhotoPage() {
         throw new Error(result.error || 'Error al crear la denuncia');
       }
 
-      // Paso 6: Mostrar éxito
       addToast({
         title: "¡Denuncia exitosa!",
         description: "Tu denuncia fue registrada en blockchain",
         color: "success",
       });
 
-      // Navegar a página de éxito con los datos
       navigate('/denuncia-exitosa', {
         state: {
-          reportId: result.data.reportId,
-          ipfsHash: result.data.ipfsHash,
-          arkivHash: result.data.arkivHash,
-          txHash: result.data.txHash,
-          imageUrl: result.data.imageUrl,
+          reportId: result.reportId,
+          txHash: result._internal?.txHash,
+          mensaje: result.mensaje,
         }
       });
 
@@ -191,7 +176,6 @@ export default function PhotoPage() {
         )}
 
         <div className="flex flex-col items-center gap-4">
-          {/* Previsualización */}
           {!imageSrc && (
             <Webcam
               ref={webcamRef}
@@ -207,7 +191,6 @@ export default function PhotoPage() {
             />
           )}
 
-          {/* Imagen capturada */}
           {imageSrc && (
             <img
               src={imageSrc}
