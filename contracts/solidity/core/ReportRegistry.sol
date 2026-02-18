@@ -23,6 +23,8 @@ contract ReportRegistry is Initializable, AccessControlUpgradeable, IReportRegis
     uint16 public constant CATEGORY_INFRAESTRUCTURA = 0;
     uint16 public constant CATEGORY_INSEGURIDAD = 1;
     uint16 public constant CATEGORY_BASURA = 2;
+    uint16 public constant CATEGORY_CORRUPCION = 3;
+    uint16 public constant CATEGORY_OTRO = 4;
 
     event ReportStored(bytes32 indexed reportId, bytes32 arkivTxId, uint16 category);
     event ValidationRecorded(bytes32 indexed reportId, address indexed validator);
@@ -46,7 +48,7 @@ contract ReportRegistry is Initializable, AccessControlUpgradeable, IReportRegis
         uint16 _categoryId
     ) external onlyRole(CORE_ROLE) {
         require(!nullifierUsed[_nullifierHash], "Nullifier already used");
-        require(_categoryId <= 2, "Invalid category");
+        require(_categoryId <= 4, "Invalid category");
 
         reports[_reportId] = Report({
             arkivTxId: _arkivTxId,

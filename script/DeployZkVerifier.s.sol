@@ -18,8 +18,11 @@ contract DeployZkVerifier is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        verifier = new CitizenZkVerifier();
+        // Reclaim Verifier address — set via env or use default for testnet
+        address reclaimVerifier = vm.envOr("RECLAIM_VERIFIER_ADDRESS", address(0xf90085F5FA697C1868D5578E3FA359461fDa2eD5));
+        verifier = new CitizenZkVerifier(reclaimVerifier);
         console.log("CitizenZkVerifier deployed at: %s", address(verifier));
+        console.log("  -> Reclaim Verifier: %s", reclaimVerifier);
 
         vm.stopBroadcast();
         

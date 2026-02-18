@@ -20,7 +20,6 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
     "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
     "@account-abstraction/=lib/account-abstraction/",
-    "@semaphore/=lib/semaphore/packages/contracts/contracts/",
     "forge-std/=lib/forge-std/src/",
     "@reclaimprotocol/verifier-solidity-sdk/=node_modules/@reclaimprotocol/verifier-solidity-sdk/"
 ]

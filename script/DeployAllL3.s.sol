@@ -61,8 +61,11 @@ contract DeployAllL3 is Script {
         // 2. ZK IDENTITY MODULE
         // ==========================================
 
-        zkVerifier = new CitizenZkVerifier();
+        // Reclaim Verifier address — set via env or use default for testnet
+        address reclaimVerifier = vm.envOr("RECLAIM_VERIFIER_ADDRESS", address(0xf90085F5FA697C1868D5578E3FA359461fDa2eD5));
+        zkVerifier = new CitizenZkVerifier(reclaimVerifier);
         console.log("CitizenZkVerifier: %s", address(zkVerifier));
+        console.log("  -> Reclaim Verifier: %s", reclaimVerifier);
 
         // ==========================================
         // 3. CONFIGURATION & WIRING
