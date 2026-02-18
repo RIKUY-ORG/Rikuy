@@ -181,6 +181,7 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
         // Auto-verificar si alcanza threshold
         if (reportUpvotes[_reportId] >= VERIFICATION_THRESHOLD) {
             anonymousReport.incrementValidation(_reportId);
+            reportRegistry.incrementValidationScore(_reportId);
             emit ReportVerified(_reportId, reportUpvotes[_reportId]);
         }
     }

@@ -28,6 +28,12 @@ router.post(
       const body = {
         category: parseInt(req.body.category),
         description: req.body.description,
+        // Campos legales Ley 974
+        accusedEntity: req.body.accusedEntity,
+        incidentDate: req.body.incidentDate,
+        detailedDescription: req.body.detailedDescription,
+        evidenceDescription: req.body.evidenceDescription,
+        citizenSignature: req.body.citizenSignature,
         location: JSON.parse(req.body.location),
       };
 
@@ -40,6 +46,12 @@ router.post(
         photo: req.file,
         category: body.category,
         description: body.description,
+        // Campos legales Ley 974
+        accusedEntity: body.accusedEntity,
+        incidentDate: body.incidentDate,
+        detailedDescription: body.detailedDescription,
+        evidenceDescription: body.evidenceDescription,
+        citizenSignature: body.citizenSignature,
         location: body.location,
         walletAddress,
       };

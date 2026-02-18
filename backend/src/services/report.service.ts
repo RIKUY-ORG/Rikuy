@@ -18,22 +18,83 @@ const logger = getServiceLogger('ReportRelayerService');
 
 class ReportRelayerService {
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // EIP-712 — Typed structured data for citizen signature verification
+  // ─────────────────────────────────────────────────────────────────────────
+
+  private readonly EIP712_DOMAIN = {
+    name: 'Rikuy',
+    version: '2',
+    chainId: parseInt(process.env.RIKUY_CHAIN_ID || '313370'),
+  };
+
+  private readonly EIP712_TYPES = {
+    RikuyReport: [
+      { name: 'contentHash', type: 'bytes32' },
+      { name: 'category', type: 'uint16' },
+      { name: 'accusedEntity', type: 'string' },
+      { name: 'incidentDate', type: 'string' },
+      { name: 'timestamp', type: 'uint256' },
+    ],
+  };
+
   /**
-   * Crear denuncia anónima — flujo completo:
-   * 1. Upload foto a IPFS
-   * 2. AI analiza imagen
-   * 3. Almacenar metadata en Arkiv
-   * 4. Generar commitment anónimo + nullifier
-   * 5. Enviar TX a blockchain via Relayer
+   * Verificar firma EIP-712 del ciudadano
+   * @returns signatureHash si es valida, undefined si no se provee firma
+   * @throws si la firma es invalida
+   */
+  private verifyEIP712Signature(
+    signature: string,
+    message: {
+      contentHash: string;
+      category: number;
+      accusedEntity: string;
+      incidentDate: string;
+      timestamp: number;
+    },
+    expectedAddress: string,
+  ): string {
+    const recovered = ethers.verifyTypedData(
+      this.EIP712_DOMAIN,
+      this.EIP712_TYPES,
+      message,
+      signature,
+    );
+
+    if (recovered.toLowerCase() !== expectedAddress.toLowerCase()) {
+      throw new Error(
+        `EIP-712 signature mismatch: recovered ${recovered}, expected ${expectedAddress}`
+      );
+    }
+
+    logger.info({ recovered }, 'EIP-712 signature verified');
+    return ethers.keccak256(ethers.toUtf8Bytes(signature));
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // REPORT CREATION — Ley 974 compliant
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Crear denuncia anonima con validez legal (Ley 974) — flujo completo:
+   * 1. Upload foto a IPFS (EXIF stripped)
+   * 2. AI analiza imagen (Gemini Pro Vision)
+   * 3. Generar contentHash v2 (incluye campos legales Ley 974)
+   * 4. Verificar firma EIP-712 del ciudadano (si existe)
+   * 5. Almacenar metadata completa en Arkiv (10yr retention)
+   * 6. Generar commitment anonimo + nullifier
+   * 7. Enviar TX a blockchain via Relayer
+   * 8. Cross-reference reportIds (Arkiv <-> on-chain)
    */
   async createReport(request: CreateReportRequest): Promise<CreateReportResponse> {
     const startTime = Date.now();
 
     try {
-      logger.info('Starting report creation with relayer');
+      logger.info('Starting Ley 974 compliant report creation');
 
       this.validateLocation(request.location);
 
+      // ── Step 1: Upload foto a IPFS ──
       logger.info('Step 1: Uploading image to IPFS');
       const { ipfsHash, url: imageUrl, fileHash } = await ipfsService.uploadImage(request.photo);
 
@@ -42,6 +103,7 @@ class ReportRelayerService {
         throw new DuplicateImageError();
       }
 
+      // ── Step 2: AI analiza imagen ──
       logger.info('Step 2: AI analyzing image');
       const aiAnalysis = await aiService.analyzeImage(imageUrl, request.category);
 
@@ -50,16 +112,69 @@ class ReportRelayerService {
         throw new ContentModerationError();
       }
 
-      const description = request.description || aiAnalysis.description;
+      // Usar detailedDescription (Ley 974) con fallback a description/AI
+      const detailedDescription = request.detailedDescription || request.description || aiAnalysis.description;
+      const accusedEntity = request.accusedEntity;
+      const incidentDate = request.incidentDate;
+      const evidenceDescription = request.evidenceDescription || '';
 
-      const reportId = this.generateReportId(fileHash, request.location);
+      // ── Step 3: Generar contentHash v2 con campos legales ──
+      // CRITICO: Este hash se almacena on-chain en Stylus (write-once, sin upgrade).
+      // Incluir todos los campos legales garantiza inmutabilidad verificable
+      // segun Ley 974 Art. 18-24.
+      logger.info('Step 3: Generating contentHash v2 (Ley 974 fields)');
+      const contentHashTimestamp = Date.now();
+      const contentHashPayload = {
+        v: 2,
+        ipfsHash,
+        fileHash,
+        category: request.category,
+        accusedEntity,
+        incidentDate,
+        detailedDescription,
+        evidenceDescription,
+        ts: contentHashTimestamp,
+      };
 
-      logger.info('Step 3: Storing metadata in Arkiv');
+      const contentHash = ethers.keccak256(
+        ethers.toUtf8Bytes(JSON.stringify(contentHashPayload))
+      );
+
+      // ── Step 4: Verificar firma EIP-712 (si existe) ──
+      const walletAddress = request.walletAddress || ethers.ZeroAddress;
+      let citizenSignatureHash: string | undefined;
+
+      if (request.citizenSignature && walletAddress !== ethers.ZeroAddress) {
+        logger.info('Step 4: Verifying EIP-712 citizen signature');
+        try {
+          citizenSignatureHash = this.verifyEIP712Signature(
+            request.citizenSignature,
+            {
+              contentHash,
+              category: request.category,
+              accusedEntity,
+              incidentDate,
+              timestamp: contentHashTimestamp,
+            },
+            walletAddress,
+          );
+        } catch (sigError: any) {
+          logger.warn({ error: sigError.message }, 'EIP-712 signature verification failed — proceeding without signature');
+          // No bloquear el reporte si la firma falla — es opcional
+        }
+      } else {
+        logger.info('Step 4: No citizen signature provided — skipping EIP-712 verification');
+      }
+
+      // ── Step 5: Almacenar en Arkiv (10yr retention) ──
+      const localReportId = this.generateReportId(fileHash, request.location);
+
+      logger.info('Step 5: Storing complete metadata in Arkiv');
       const arkivData: ArkivReportData = {
-        protocol: 'rikuy-v1',
-        version: '2.0.0',
+        protocol: 'rikuy-v2',
+        version: '3.0.0',
         timestamp: Date.now(),
-        reportId,
+        reportId: localReportId,
         category: {
           id: request.category,
           name: this.getCategoryName(request.category),
@@ -67,9 +182,19 @@ class ReportRelayerService {
         evidence: {
           imageIPFS: ipfsHash,
           imageHash: fileHash,
-          description,
-          aiGenerated: !request.description,
+          description: detailedDescription,
+          aiGenerated: !request.detailedDescription && !request.description,
           aiTags: aiAnalysis.tags,
+        },
+        // Campos legales Ley 974 — almacenamiento completo
+        legalFields: {
+          accusedEntity,
+          incidentDate,
+          detailedDescription,
+          evidenceDescription,
+          legalFramework: 'Ley 974 Art. 18-24',
+          contentHashVersion: 2,
+          citizenSignatureHash,
         },
         location: {
           approximate: {
@@ -86,28 +211,18 @@ class ReportRelayerService {
 
       const arkivTxId = await arkivService.storeReport(arkivData);
 
-      logger.info('Step 4: Generating anonymous commitment');
-      // El wallet address viene del header x-user-address (set by Privy)
-      const walletAddress = (request as any).walletAddress || ethers.ZeroAddress;
+      // ── Step 6: Generar commitment anonimo + nullifier ──
+      logger.info('Step 6: Generating anonymous commitment');
       const nonce = Date.now();
       const commitment = relayerService.generateCommitment(walletAddress, nonce);
       const nullifier = relayerService.generateNullifier(commitment, fileHash);
 
-      // Generar contentHash: hash de la evidencia completa
-      const contentHash = ethers.keccak256(
-        ethers.toUtf8Bytes(JSON.stringify({
-          ipfsHash,
-          fileHash,
-          description,
-          category: request.category,
-        }))
-      );
-
-      // Coordenadas multiplicadas por 1_000_000 para precisión entera
+      // Coordenadas multiplicadas por 1_000_000 para precision entera
       const latitude = Math.round(request.location.lat * 1_000_000);
       const longitude = Math.round(request.location.long * 1_000_000);
 
-      logger.info('Step 5: Creating report on blockchain via Relayer');
+      // ── Step 7: Crear reporte on-chain ──
+      logger.info('Step 7: Creating report on blockchain via Relayer');
       const relayerResult = await relayerService.createReport({
         contentHash,
         categoryId: request.category,
@@ -118,26 +233,33 @@ class ReportRelayerService {
         aiValidated: aiAnalysis.severity > 0,
       });
 
+      // ── Step 8: Cross-reference + response ──
       const duration = Date.now() - startTime;
       logger.info({
-        reportId: relayerResult.reportId,
+        onChainReportId: relayerResult.reportId,
+        arkivReportId: localReportId,
+        arkivTxId,
         txHash: relayerResult.txHash,
+        contentHashVersion: 2,
+        hasCitizenSignature: !!citizenSignatureHash,
         gasCost: relayerResult.gasCost,
         duration,
-      }, 'Report created successfully via relayer');
+      }, 'Ley 974 compliant report created successfully');
 
       return {
         success: true,
         reportId: relayerResult.reportId,
+        contentHash,
         status: 'confirmado' as const,
         recompensa: {
           puntos: 0,
-          mensaje: 'Tu reporte será validado por la comunidad',
+          mensaje: 'Tu reporte sera validado por la comunidad',
         },
-        mensaje: '¡Reporte creado exitosamente! Está siendo procesado por la comunidad.',
-        _internal: {
+        mensaje: 'Denuncia registrada con validez legal (Ley 974). Los datos son inmutables en blockchain.',
+        blockchain: {
+          transactionHash: relayerResult.txHash,
+          blockNumber: relayerResult.blockNumber,
           arkivTxId,
-          txHash: relayerResult.txHash,
           gasUsed: relayerResult.gasUsed,
           gasCost: relayerResult.gasCost,
         },

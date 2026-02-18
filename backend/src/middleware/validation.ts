@@ -24,10 +24,16 @@ export const validate = (schema: z.ZodSchema) => {
 
 // Schemas de validacion
 export const schemas = {
-  // Crear reporte anonimo (sin zkProof — anonimidad via commitments)
+  // Crear reporte anonimo — campos legales Ley 974
   createReport: z.object({
     category: z.number().int().min(0).max(4),
-    description: z.string().max(500).optional(),
+    description: z.string().max(500).optional(), // backward-compat (usa detailedDescription si existe)
+    // Campos legales Ley 974 (Art. 18-24)
+    accusedEntity: z.string().min(1).max(200),                         // Identificacion del denunciado
+    incidentDate: z.string().min(1).max(30),                           // Cuando ocurrieron los hechos
+    detailedDescription: z.string().min(50).max(2000),                 // Relacion de hechos detallada
+    evidenceDescription: z.string().max(500).optional(),               // Que muestra la prueba adjunta
+    citizenSignature: z.string().regex(/^0x[a-fA-F0-9]+$/).optional(), // Firma EIP-712 (opcional)
     location: z.object({
       lat: z.number().min(-23).max(-9.5),     // Bolivia bounds
       long: z.number().min(-69.7).max(-57.4),  // Bolivia bounds
