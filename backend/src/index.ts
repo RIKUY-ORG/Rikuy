@@ -89,16 +89,11 @@ app.listen(PORT, () => {
 
     // DEV MODE WARNING
     if (config.devMode) {
-      console.log('\n⚠️  ⚠️  ⚠️  DEV MODE ACTIVE ⚠️  ⚠️  ⚠️');
-      console.log('   → ZK proofs are NOT being verified!');
-      console.log('   → Membership checks are DISABLED!');
-      console.log('   → Nullifier uniqueness is NOT enforced!');
+      console.log('\n⚠️  DEV MODE ACTIVE');
+      console.log('   → Some checks may be relaxed for development');
       console.log('   → DO NOT USE IN PRODUCTION!\n');
 
-      logger.warn({
-        devMode: config.devMode,
-        warning: 'SECURITY BYPASSED FOR DEVELOPMENT'
-      }, '⚠️  DEV MODE ACTIVE - All security checks disabled');
+      logger.warn({ devMode: config.devMode }, 'DEV MODE ACTIVE');
     }
     console.log();
   }

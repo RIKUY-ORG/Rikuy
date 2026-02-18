@@ -1,56 +1,50 @@
-import { Express } from 'express';
-
-export enum DocumentType {
-  CI = 'CI',
-  PASSPORT = 'PASSPORT'
-}
-
-export enum BolivianDepartment {
-  LP = 'LP',
-  CB = 'CB',
-  SC = 'SC',
-  OR = 'OR',
-  PT = 'PT',
-  TJ = 'TJ',
-  CH = 'CH',
-  BN = 'BN',
-  PD = 'PD'
-}
+// Types para verificacion de identidad — flujo Reclaim Protocol
+// Reclaim solo nos da: CI (numero) + Nombre del ciudadano
+// desde ciudadaniadigital.bo
 
 export enum VerificationStatus {
   PENDING = 'PENDING',
   VERIFIED = 'VERIFIED',
-  REJECTED = 'REJECTED',
-  REVOKED = 'REVOKED'
-}
-
-export enum VerificationMethod {
-  OCR_AUTO = 'OCR_AUTO',
-  MANUAL = 'MANUAL',
-  HYBRID = 'HYBRID'
+  REVOKED = 'REVOKED',
 }
 
 export enum RejectionReason {
-  INVALID_FORMAT = 'INVALID_FORMAT',
-  EXPIRED_DOCUMENT = 'EXPIRED_DOCUMENT',
-  POOR_IMAGE_QUALITY = 'POOR_IMAGE_QUALITY',
-  DOCUMENT_NOT_READABLE = 'DOCUMENT_NOT_READABLE',
   DUPLICATE_IDENTITY = 'DUPLICATE_IDENTITY',
-  FRAUDULENT_DOCUMENT = 'FRAUDULENT_DOCUMENT',
-  NOT_BOLIVIAN = 'NOT_BOLIVIAN',
-  INCOMPLETE_DATA = 'INCOMPLETE_DATA'
+  INVALID_CI_FORMAT = 'INVALID_CI_FORMAT',
+  RECLAIM_PROOF_FAILED = 'RECLAIM_PROOF_FAILED',
+  RATE_LIMITED = 'RATE_LIMITED',
 }
 
+export enum BolivianDepartment {
+  LP = 'LP', // La Paz
+  CB = 'CB', // Cochabamba
+  SC = 'SC', // Santa Cruz
+  OR = 'OR', // Oruro
+  PT = 'PT', // Potosi
+  TJ = 'TJ', // Tarija
+  CH = 'CH', // Chuquisaca
+  BN = 'BN', // Beni
+  PD = 'PD', // Pando
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// RECLAIM DATA (lo que obtenemos de ciudadaniadigital.bo)
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface ReclaimCitizenData {
+  ci: string;        // Numero de CI boliviano
+  fullName: string;  // Nombre completo del ciudadano
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// REQUEST / RESPONSE
+// ──────────────────────────────────────────────────────────────────────────
+
 export interface VerifyIdentityRequest {
-  documentType: DocumentType;
-  documentNumber: string;
-  expedition?: string;
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  documentImage: Express.Multer.File;
-  selfieImage?: Express.Multer.File;
-  userAddress?: string;
+  ci: string;            // CI del ciudadano (de Reclaim)
+  fullName: string;      // Nombre completo (de Reclaim)
+  walletAddress: string; // Privy embedded wallet
+  reclaimProof?: any;    // Proof de Reclaim Protocol (para verificacion on-chain)
 }
 
 export interface VerifyIdentityResponse {
@@ -58,21 +52,11 @@ export interface VerifyIdentityResponse {
   message: string;
   data: {
     verified: boolean;
-    identity: {
-      commitment: string;
-      secret: string;
-    };
-    semaphoreGroupId: string;
+    commitment: string;  // Anonymous commitment (keccak256)
+    txHash: string;      // On-chain registration tx
     status: VerificationStatus;
     verifiedAt: string;
   };
-}
-
-export interface VerifyIdentityError {
-  success: false;
-  error: string;
-  reason: RejectionReason;
-  details?: string;
 }
 
 export interface IdentityStatusResponse {
@@ -80,79 +64,22 @@ export interface IdentityStatusResponse {
   data: {
     isVerified: boolean;
     verifiedAt?: string;
-    documentType?: DocumentType;
-    semaphoreGroupId?: string;
-    identityCommitment?: string;
+    commitment?: string;
     canCreateReports: boolean;
     status: VerificationStatus;
   };
 }
 
-export interface ExtractedCIData {
-  documentNumber: string;
-  expedition: BolivianDepartment;
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  confidence: number;
-  rawText: string;
-}
-
-export interface ExtractedPassportData {
-  passportNumber: string;
-  nationality: string;
-  firstName: string;
-  lastName: string;
-  dateOfBirth: string;
-  sex: string;
-  issueDate: string;
-  expiryDate: string;
-  confidence: number;
-  rawText: string;
-}
-
-export interface DocumentValidation {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
-  extractedData?: ExtractedCIData | ExtractedPassportData;
-}
-
-export interface SemaphoreIdentity {
-  commitment: string;
-  nullifier: string;
-  trapdoor: string;
-  secret: string;
-}
-
-export interface SemaphoreProof {
-  proof: string[];
-  publicSignals: string[];
-}
-
-export interface ProofVerificationResult {
-  isValid: boolean;
-  nullifier?: string;
-  merkleRoot?: string;
-  message?: string;
-  scope?: string;
-  error?: string;
-}
+// ──────────────────────────────────────────────────────────────────────────
+// STORAGE (en memoria — en prod seria DB)
+// ──────────────────────────────────────────────────────────────────────────
 
 export interface StoredIdentity {
   id: string;
-  userAddress: string;
-  documentType: DocumentType;
-  documentNumberHash: string;
-  firstNameEncrypted: string;
-  lastNameEncrypted: string;
-  dateOfBirthEncrypted: string;
-  identityCommitment: string;
-  identitySecretEncrypted: string;
-  semaphoreGroupId: string;
+  walletAddress: string;
+  ciHash: string;          // SHA256(ci) — nunca almacenar CI en texto plano
+  commitment: string;       // Anonymous commitment (bytes32)
   verifiedAt: Date;
-  verifiedBy?: string;
-  verificationMethod: VerificationMethod;
   status: VerificationStatus;
   revokedAt?: Date;
   revokedReason?: string;
@@ -162,54 +89,22 @@ export interface StoredIdentity {
 
 export interface VerificationAttempt {
   id: string;
-  userAddress: string;
-  documentType: DocumentType;
+  walletAddress: string;
   success: boolean;
   failureReason?: RejectionReason;
-  failureDetails?: string;
   ipAddress: string;
   userAgent: string;
   attemptedAt: Date;
 }
 
-export interface IdentityServiceConfig {
-  encryptionKey: string;
-  maxAttemptsPerDay: number;
-  maxAttemptsPerHour: number;
-  semaphoreGroupId: string;
-  semaphoreAdapterAddress: string;
-  ocrProvider: 'tesseract' | 'google' | 'azure';
-  ocrApiKey?: string;
-  requireSelfie: boolean;
-  minImageWidth: number;
-  minImageHeight: number;
-}
-
-export interface BolivianCIData {
-  number: string;
-  expedition: BolivianDepartment;
-}
+// ──────────────────────────────────────────────────────────────────────────
+// VALIDATION HELPERS
+// ──────────────────────────────────────────────────────────────────────────
 
 export interface CIValidationResult {
   isValid: boolean;
-  normalized?: BolivianCIData;
+  normalized?: string;  // CI limpio (solo digitos)
   error?: string;
-}
-
-export function isExtractedCIData(data: any): data is ExtractedCIData {
-  return (
-    typeof data === 'object' &&
-    'documentNumber' in data &&
-    'expedition' in data
-  );
-}
-
-export function isExtractedPassportData(data: any): data is ExtractedPassportData {
-  return (
-    typeof data === 'object' &&
-    'passportNumber' in data &&
-    'nationality' in data
-  );
 }
 
 export function isValidDepartment(dept: string): dept is BolivianDepartment {
