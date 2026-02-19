@@ -104,17 +104,5 @@ npm run dev
 ```
 
 ---
-
-## 📈 Business Impact & Hackathon Roadmap
-
-Rikuy is designed not just as a technical showcase, but as a deployable public good. 
-* **Target Audience:** Municipal governments, Anti-corruption NGOs, and Investigative Journalists.
-* **Next Steps:** 
-  - Complete the Community Validation module (upvoting/downvoting verified reports).
-  - Launch a Governance DAO for report resolution.
-  - Pilot testing in Santa Cruz de la Sierra, Bolivia.
-
----
 <div align="center">
-<i>Built with ❤️ for a more transparent future.</i>
-</div>
+
