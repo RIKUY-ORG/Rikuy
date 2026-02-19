@@ -1,8 +1,10 @@
 import { Router, Request, Response } from 'express';
 import { reportService } from '../services/report.service';
+import { identityService } from '../services/identity.service';
 import { upload } from '../middleware/upload';
 import { validate, schemas } from '../middleware/validation';
 import { CreateReportRequest } from '../types';
+import { config } from '../config';
 
 const router = Router();
 
@@ -41,6 +43,26 @@ router.post(
 
       // walletAddress desde header de Privy (embedded wallet)
       const walletAddress = req.headers['x-user-address'] as string || undefined;
+
+      // ── Verificar ciudadanía boliviana (Reclaim Protocol) ──
+      // Solo ciudadanos verificados pueden crear reportes (Ley 974)
+      if (!config.devMode) {
+        if (!walletAddress) {
+          return res.status(401).json({
+            success: false,
+            error: 'Wallet address requerido. Conecta tu wallet primero.',
+          });
+        }
+
+        const identity = await identityService.getIdentityStatus(walletAddress);
+        if (!identity.data.canCreateReports) {
+          return res.status(403).json({
+            success: false,
+            error: 'Debes verificar tu ciudadanía boliviana antes de crear reportes.',
+            verificacionUrl: '/verificar-identidad',
+          });
+        }
+      }
 
       const request: CreateReportRequest = {
         photo: req.file,

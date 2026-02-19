@@ -44,16 +44,17 @@ x-user-address: <privy embedded wallet address>
   "blockchain": {
     "transactionHash": "0x...",
     "blockNumber": 12345,
-    "arkivTxId": "0x...",
+    "metadataIpfsHash": "Qm...",
+    "imageIpfsHash": "Qm...",
     "gasUsed": "...",
     "gasCost": "..."
   }
 }
 ```
 
-The `reportId` is the canonical on-chain ID. The `contentHash` can be used to verify data integrity against the Stylus contract. The `arkivTxId` references the full metadata stored for 10 years.
+The `reportId` is the canonical on-chain ID. The `contentHash` can be used to verify data integrity against the Stylus contract. The `metadataIpfsHash` is the CID of the full legal metadata JSON stored in IPFS (Pinata). The `imageIpfsHash` is the CID of the photo evidence.
 
-The backend handles: IPFS upload, AI image analysis, contentHash v2 generation (includes all legal fields), Arkiv storage, commitment generation, EIP-712 verification, nullifier generation, and blockchain TX via gasless relayer.
+The backend handles: IPFS upload (photo + metadata JSON via Pinata), AI image analysis, contentHash v2 generation (includes all legal fields), commitment generation, EIP-712 verification, nullifier generation, and blockchain TX via gasless relayer. Triple respaldo: foto en IPFS + metadata JSON en IPFS + contentHash on-chain.
 
 ---
 
@@ -225,10 +226,10 @@ The `ReclaimVerification` component (`frontend/src/components/ReclaimVerificatio
 
 The report system implements the requirements of Bolivia's Ley N. 974:
 
-1. **Relacion de hechos** (Art. 18) → `detailedDescription` (min 50 chars, stored in Arkiv + hashed on-chain)
-2. **Identificacion del denunciado** (Art. 18) → `accusedEntity` (stored in Arkiv + hashed on-chain)
-3. **Temporalidad** (Art. 18) → `incidentDate` (stored in Arkiv + hashed on-chain)
-4. **Prueba** (Art. 18) → `photo` (IPFS) + `evidenceDescription` (stored in Arkiv + hashed on-chain)
+1. **Relacion de hechos** (Art. 18) → `detailedDescription` (min 50 chars, stored in IPFS + hashed on-chain)
+2. **Identificacion del denunciado** (Art. 18) → `accusedEntity` (stored in IPFS + hashed on-chain)
+3. **Temporalidad** (Art. 18) → `incidentDate` (stored in IPFS + hashed on-chain)
+4. **Prueba** (Art. 18) → `photo` (IPFS) + `evidenceDescription` (stored in IPFS + hashed on-chain)
 5. **Inmutabilidad** → `contentHash` v2 stored in Stylus contract (no upgrade mechanism)
 6. **Non-repudiation** → Optional EIP-712 citizen signature
 

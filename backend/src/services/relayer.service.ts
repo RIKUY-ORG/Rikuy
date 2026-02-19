@@ -63,15 +63,35 @@ const COMMITMENT_SALT = process.env.COMMITMENT_SALT || crypto.randomBytes(32).to
  * Maneja toda la lógica de firmar y enviar transacciones por el usuario
  */
 export class BlockchainRelayerService {
-  private provider: ethers.JsonRpcProvider;
-  private relayerWallet: ethers.Wallet;
-  private rikuyCore: ethers.Contract;
+  private provider!: ethers.JsonRpcProvider;
+  private relayerWallet!: ethers.Wallet;
+  private rikuyCore!: ethers.Contract;
+  private initialized = false;
 
   private readonly MIN_BALANCE = ethers.parseEther('0.01');
   private readonly CRITICAL_BALANCE = ethers.parseEther('0.001');
 
   constructor() {
-    this.provider = new ethers.JsonRpcProvider(config.blockchain.rpcUrl);
+    // Lazy init — no crashear en startup si blockchain no está disponible
+    try {
+      this.initBlockchain();
+    } catch (err: any) {
+      logger.warn({ error: err.message },'[Relayer] Blockchain init deferred — will retry on first TX');
+    }
+  }
+
+  private initBlockchain() {
+    if (this.initialized) return;
+
+    const rpcUrl = config.blockchain.rpcUrl;
+    const coreAddress = config.blockchain.contracts.rikuyCoreV2;
+
+    if (!rpcUrl || !coreAddress) {
+      logger.warn('[Relayer] Missing RPC URL or contract address — blockchain features disabled until configured');
+      return;
+    }
+
+    this.provider = new ethers.JsonRpcProvider(rpcUrl);
 
     this.relayerWallet = new ethers.Wallet(
       config.blockchain.relayerPrivateKey,
@@ -79,19 +99,34 @@ export class BlockchainRelayerService {
     );
 
     this.rikuyCore = new ethers.Contract(
-      config.blockchain.contracts.rikuyCoreV2,
+      coreAddress,
       RikuyCoreV2ABI.abi,
       this.relayerWallet
     );
 
+    this.initialized = true;
+
     logger.info({
       relayerAddress: this.relayerWallet.address,
       chainId: config.blockchain.chainId,
-    }, '[Relayer] Service initialized');
+    },'[Relayer] Service initialized');
 
     this.checkBalance().catch(err => {
-      logger.error({ error: err }, '[Relayer] Error checking initial balance');
+      logger.error({ error: err },'[Relayer] Error checking initial balance');
     });
+  }
+
+  private ensureInitialized() {
+    if (!this.initialized) {
+      this.initBlockchain();
+    }
+    if (!this.initialized) {
+      throw new AppError(
+        'RELAYER_NOT_INITIALIZED',
+        'Blockchain relayer not configured. Set RPC_URL and contract addresses.',
+        503
+      );
+    }
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -103,10 +138,12 @@ export class BlockchainRelayerService {
    * commitment = keccak256(wallet + salt + nonce)
    * El salt es secreto del backend → el commitment no revela identidad
    */
-  generateCommitment(walletAddress: string, nonce: number): string {
+  generateCommitment(walletAddress: string,nonce: number): string {
+    // Asegurar que COMMITMENT_SALT tenga prefijo 0x correcto (sin duplicar)
+    const salt = COMMITMENT_SALT.startsWith('0x') ? COMMITMENT_SALT : '0x' + COMMITMENT_SALT;
     const packed = ethers.solidityPacked(
-      ['address', 'bytes32', 'uint256'],
-      [walletAddress, '0x' + COMMITMENT_SALT, nonce]
+      ['address','bytes32','uint256'],
+      [walletAddress,salt,nonce]
     );
     return ethers.keccak256(packed);
   }
@@ -115,10 +152,10 @@ export class BlockchainRelayerService {
    * Generar nullifier único para una sesión de denuncia
    * nullifier = keccak256(commitment + sessionData + timestamp)
    */
-  generateNullifier(commitment: string, sessionData: string): string {
+  generateNullifier(commitment: string,sessionData: string): string {
     const packed = ethers.solidityPacked(
-      ['bytes32', 'string', 'uint256'],
-      [commitment, sessionData, Date.now()]
+      ['bytes32','string','uint256'],
+      [commitment,sessionData,Date.now()]
     );
     return ethers.keccak256(packed);
   }
@@ -133,6 +170,7 @@ export class BlockchainRelayerService {
    */
   async registerCitizen(params: RegisterCitizenParams): Promise<{ txHash: string }> {
     try {
+      this.ensureInitialized();
       logger.info('[Relayer] Registering citizen commitment');
 
       await this.ensureSufficientBalance();
@@ -144,11 +182,11 @@ export class BlockchainRelayerService {
         throw new Error('registerCitizen transaction failed');
       }
 
-      logger.info({ txHash: receipt.hash }, '[Relayer] Citizen registered');
+      logger.info({ txHash: receipt.hash },'[Relayer] Citizen registered');
       return { txHash: receipt.hash };
     } catch (error: any) {
-      logger.error({ error: error.message }, '[Relayer] Error registering citizen');
-      throw new AppError('REGISTER_CITIZEN_FAILED', 'Failed to register citizen', 500);
+      logger.error({ error: error.message },'[Relayer] Error registering citizen');
+      throw new AppError('REGISTER_CITIZEN_FAILED','Failed to register citizen',500);
     }
   }
 
@@ -160,29 +198,21 @@ export class BlockchainRelayerService {
    */
   async createReport(params: CreateReportParams): Promise<RelayerTxResult> {
     try {
+      this.ensureInitialized();
       logger.info({
         categoryId: params.categoryId,
-      }, '[Relayer] Creating report on-chain');
+      },'[Relayer] Creating report on-chain');
 
       await this.ensureSufficientBalance();
 
-      // Estimar gas
-      const gasEstimate = await this.rikuyCore.createReport.estimateGas(
-        params.contentHash,
-        params.categoryId,
-        params.commitment,
-        params.nullifier,
-        params.latitude,
-        params.longitude,
-        params.aiValidated
-      );
+      // NOTE: Skip estimateGas — Arbitrum L3 includes L1 data posting costs
+      // in gas estimates, making them fail even when the tx would succeed.
+      // Use a fixed gas limit that's sufficient for L2 execution.
+      const gasLimit = BigInt(5_000_000);
 
-      const gasLimit = gasEstimate * BigInt(120) / BigInt(100);
-
-      logger.debug({
-        estimated: gasEstimate.toString(),
-        withBuffer: gasLimit.toString(),
-      }, '[Relayer] Gas estimate');
+      logger.info({
+        gasLimit: gasLimit.toString(),
+      },'[Relayer] Using fixed gas limit (Arbitrum L3 workaround)');
 
       // Enviar transacción
       const tx = await this.rikuyCore.createReport(
@@ -199,7 +229,7 @@ export class BlockchainRelayerService {
       logger.info({
         txHash: tx.hash,
         nonce: tx.nonce,
-      }, '[Relayer] Transaction sent');
+      },'[Relayer] Transaction sent');
 
       const receipt = await tx.wait();
 
@@ -235,10 +265,10 @@ export class BlockchainRelayerService {
         blockNumber: receipt.blockNumber,
         gasUsed: gasUsed.toString(),
         gasCost: gasCostEth + ' ETH',
-      }, '[Relayer] Transaction confirmed');
+      },'[Relayer] Transaction confirmed');
 
       this.checkBalance().catch(err => {
-        logger.error({ error: err }, '[Relayer] Error checking balance after TX');
+        logger.error({ error: err },'[Relayer] Error checking balance after TX');
       });
 
       return {
@@ -253,7 +283,7 @@ export class BlockchainRelayerService {
       logger.error({
         error: error.message,
         code: error.code,
-      }, '[Relayer] Error creating report');
+      },'[Relayer] Error creating report');
 
       if (error.code === 'INSUFFICIENT_FUNDS') {
         throw new AppError(
@@ -304,29 +334,29 @@ export class BlockchainRelayerService {
         balance: balanceEth + ' ETH',
         isLow,
         isCritical,
-      }, '[Relayer] Balance check');
+      },'[Relayer] Balance check');
 
       if (isCritical) {
         logger.error({
           balance: balanceEth,
           threshold: ethers.formatEther(this.CRITICAL_BALANCE),
-        }, '[Relayer] CRITICAL: Balance critically low!');
+        },'[Relayer] CRITICAL: Balance critically low!');
       } else if (isLow) {
         logger.warn({
           balance: balanceEth,
           threshold: ethers.formatEther(this.MIN_BALANCE),
-        }, '[Relayer] Balance is low');
+        },'[Relayer] Balance is low');
       }
 
-      return { balance: balanceEth, balanceWei, isLow, isCritical };
+      return { balance: balanceEth,balanceWei,isLow,isCritical };
     } catch (error) {
-      logger.error({ error }, '[Relayer] Error checking balance');
+      logger.error({ error },'[Relayer] Error checking balance');
       throw error;
     }
   }
 
   private async ensureSufficientBalance(): Promise<void> {
-    const { isCritical, balance } = await this.checkBalance();
+    const { isCritical,balance } = await this.checkBalance();
 
     if (isCritical) {
       throw new AppError(

@@ -4,6 +4,9 @@
  * Supports multiple networks:
  * - arbitrum: Arbitrum Sepolia (L2 parent)
  * - rikuy: Rikuy Chain L3 (target network)
+ *
+ * NOTA: Todas las configs usan funciones (no constantes top-level)
+ * para que process.env se lea DESPUÉS de dotenv.config()
  */
 
 export type NetworkType = 'arbitrum' | 'rikuy';
@@ -24,41 +27,45 @@ export interface NetworkConfig {
 // ═══════════════════════════════════════════════════════════════
 // ARBITRUM SEPOLIA (L2 Parent)
 // ═══════════════════════════════════════════════════════════════
-export const arbitrumConfig: NetworkConfig = {
-  rpcUrl: process.env.ARBITRUM_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
-  chainId: parseInt(process.env.ARBITRUM_CHAIN_ID || '421614'),
-  networkName: 'arbitrum-sepolia',
-  explorerUrl: 'https://sepolia.arbiscan.io',
-  contracts: {
-    rikuyCoreV2: process.env.ARBITRUM_RIKUY_CORE_ADDRESS || '',
-    reportRegistry: process.env.ARBITRUM_REPORT_REGISTRY_ADDRESS || '',
-    governmentRegistry: process.env.ARBITRUM_GOVERNMENT_REGISTRY_ADDRESS || '',
-    anonymousReport: '',
-  },
-};
+function getArbitrumConfig(): NetworkConfig {
+  return {
+    rpcUrl: process.env.ARBITRUM_RPC_URL || 'https://sepolia-rollup.arbitrum.io/rpc',
+    chainId: parseInt(process.env.ARBITRUM_CHAIN_ID || '421614'),
+    networkName: 'arbitrum-sepolia',
+    explorerUrl: 'https://sepolia.arbiscan.io',
+    contracts: {
+      rikuyCoreV2: process.env.ARBITRUM_RIKUY_CORE_ADDRESS || '',
+      reportRegistry: process.env.ARBITRUM_REPORT_REGISTRY_ADDRESS || '',
+      governmentRegistry: process.env.ARBITRUM_GOVERNMENT_REGISTRY_ADDRESS || '',
+      anonymousReport: '',
+    },
+  };
+}
 
 // ═══════════════════════════════════════════════════════════════
 // RIKUY CHAIN L3 (Target - Arbitrum Orbit)
 // ═══════════════════════════════════════════════════════════════
-export const rikuyChainConfig: NetworkConfig = {
-  rpcUrl: process.env.RIKUY_CHAIN_RPC_URL || '',
-  chainId: parseInt(process.env.RIKUY_CHAIN_ID || '313370'),
-  networkName: 'rikuy-chain',
-  explorerUrl: process.env.RIKUY_CHAIN_EXPLORER_URL || '',
-  contracts: {
-    rikuyCoreV2: process.env.RIKUY_CHAIN_RIKUY_CORE_ADDRESS || '',
-    reportRegistry: process.env.RIKUY_CHAIN_REPORT_REGISTRY_ADDRESS || '',
-    governmentRegistry: process.env.RIKUY_CHAIN_GOVERNMENT_REGISTRY_ADDRESS || '',
-    anonymousReport: process.env.RIKUY_CHAIN_ANONYMOUS_REPORT_ADDRESS || '',
-  },
-};
+function getRikuyChainConfig(): NetworkConfig {
+  return {
+    rpcUrl: process.env.RIKUY_CHAIN_RPC_URL || '',
+    chainId: parseInt(process.env.RIKUY_CHAIN_ID || '313370'),
+    networkName: 'rikuy-chain',
+    explorerUrl: process.env.RIKUY_CHAIN_EXPLORER_URL || '',
+    contracts: {
+      rikuyCoreV2: process.env.RIKUY_CHAIN_RIKUY_CORE_ADDRESS || '',
+      reportRegistry: process.env.RIKUY_CHAIN_REPORT_REGISTRY_ADDRESS || '',
+      governmentRegistry: process.env.RIKUY_CHAIN_GOVERNMENT_REGISTRY_ADDRESS || '',
+      anonymousReport: process.env.RIKUY_CHAIN_ANONYMOUS_REPORT_ADDRESS || '',
+    },
+  };
+}
 
 // ═══════════════════════════════════════════════════════════════
 // NETWORK SELECTOR
 // ═══════════════════════════════════════════════════════════════
-const networkConfigs: Record<NetworkType, NetworkConfig> = {
-  arbitrum: arbitrumConfig,
-  rikuy: rikuyChainConfig,
+const networkConfigGetters: Record<NetworkType, () => NetworkConfig> = {
+  arbitrum: getArbitrumConfig,
+  rikuy: getRikuyChainConfig,
 };
 
 /**
@@ -68,11 +75,11 @@ const networkConfigs: Record<NetworkType, NetworkConfig> = {
 export function getNetworkConfig(): NetworkConfig {
   const network = (process.env.NETWORK || 'rikuy') as NetworkType;
 
-  if (!networkConfigs[network]) {
+  if (!networkConfigGetters[network]) {
     throw new Error(`Unknown network: ${network}. Valid options: arbitrum, rikuy`);
   }
 
-  return networkConfigs[network];
+  return networkConfigGetters[network]();
 }
 
 /**

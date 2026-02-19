@@ -39,17 +39,19 @@ export interface CreateReportResponse {
   blockchain: {
     transactionHash: string;   // TX hash para verificar en explorador
     blockNumber: number;       // Bloque de confirmacion
-    arkivTxId: string;         // Referencia Arkiv (almacenamiento 10yr)
+    metadataIpfsHash: string;  // CID de metadata legal en IPFS (Pinata)
+    imageIpfsHash: string;     // CID de la foto en IPFS (Pinata)
     gasUsed?: string;
     gasCost?: string;
   };
 }
 
-export interface ArkivReportData {
+export interface ReportMetadata {
   protocol: 'rikuy-v2';
   version: string;
   timestamp: number;
   reportId: string;
+  contentHash: string;         // Referencia cruzada al hash almacenado on-chain
   category: {
     id: number;
     name: string;
@@ -61,7 +63,7 @@ export interface ArkivReportData {
     aiGenerated: boolean;
     aiTags?: string[];
   };
-  // Campos legales Ley 974 (almacenamiento completo por 10 anios)
+  // Campos legales Ley 974 (almacenamiento completo en IPFS)
   legalFields: {
     accusedEntity: string;       // A quien se denuncia
     incidentDate: string;        // Cuando ocurrieron los hechos
@@ -108,7 +110,7 @@ export interface ReportStatus {
   verificado: boolean;
   resuelto: boolean;
   recompensaGanada?: number; // En puntos
-  datosReporte?: ArkivReportData;
+  datosReporte?: ReportMetadata;
   // Campos internos
   _internal?: {
     blockchainStatus: number;

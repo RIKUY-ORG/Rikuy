@@ -4,6 +4,8 @@ import { getNetworkConfig,getCurrentNetwork,type NetworkConfig } from './network
 dotenv.config();
 
 // Get current network configuration
+// NOTA: getNetworkConfig() lee process.env — por eso networks.ts
+// debe usar funciones (no constantes top-level) para las env vars
 const networkConfig: NetworkConfig = getNetworkConfig();
 
 export const config = {
@@ -34,16 +36,7 @@ export const config = {
   },
 
   // ═══════════════════════════════════════════════════════════════
-  // ARKIV (Permanent Storage)
-  // ═══════════════════════════════════════════════════════════════
-  arkiv: {
-    rpcUrl: process.env.ARKIV_RPC_URL || 'https://mendoza.hoodi.arkiv.network/rpc',
-    privateKey: process.env.ARKIV_PRIVATE_KEY!,
-    chainId: 60138453056,
-  },
-
-  // ═══════════════════════════════════════════════════════════════
-  // IPFS (Pinata)
+  // IPFS (Pinata) — Fotos + Metadata legal (reemplaza Arkiv)
   // ═══════════════════════════════════════════════════════════════
   pinata: {
     jwt: process.env.PINATA_JWT!,

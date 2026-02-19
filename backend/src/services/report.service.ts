@@ -1,7 +1,6 @@
-import { CreateReportRequest, CreateReportResponse, ReportCategory, ArkivReportData } from '../types';
+import { CreateReportRequest, CreateReportResponse, ReportCategory, ReportMetadata } from '../types';
 import { ipfsService } from './ipfs.service';
 import { aiService } from './ai.service';
-import { arkivService } from './arkiv.service';
 import { relayerService } from './relayer.service';
 import { getServiceLogger } from '../utils/logger';
 import { config } from '../config';
@@ -81,10 +80,10 @@ class ReportRelayerService {
    * 2. AI analiza imagen (Gemini Pro Vision)
    * 3. Generar contentHash v2 (incluye campos legales Ley 974)
    * 4. Verificar firma EIP-712 del ciudadano (si existe)
-   * 5. Almacenar metadata completa en Arkiv (10yr retention)
+   * 5. Almacenar metadata completa en IPFS (Pinata)
    * 6. Generar commitment anonimo + nullifier
    * 7. Enviar TX a blockchain via Relayer
-   * 8. Cross-reference reportIds (Arkiv <-> on-chain)
+   * 8. Cross-reference reportIds (IPFS <-> on-chain)
    */
   async createReport(request: CreateReportRequest): Promise<CreateReportResponse> {
     const startTime = Date.now();
@@ -166,15 +165,16 @@ class ReportRelayerService {
         logger.info('Step 4: No citizen signature provided — skipping EIP-712 verification');
       }
 
-      // ── Step 5: Almacenar en Arkiv (10yr retention) ──
+      // ── Step 5: Almacenar metadata legal en IPFS (Pinata) ──
       const localReportId = this.generateReportId(fileHash, request.location);
 
-      logger.info('Step 5: Storing complete metadata in Arkiv');
-      const arkivData: ArkivReportData = {
+      logger.info('Step 5: Storing complete metadata in IPFS (Pinata)');
+      const reportMetadata: ReportMetadata = {
         protocol: 'rikuy-v2',
         version: '3.0.0',
         timestamp: Date.now(),
         reportId: localReportId,
+        contentHash,
         category: {
           id: request.category,
           name: this.getCategoryName(request.category),
@@ -209,7 +209,16 @@ class ReportRelayerService {
         },
       };
 
-      const arkivTxId = await arkivService.storeReport(arkivData);
+      const metadataResult = await ipfsService.uploadJSON(reportMetadata, {
+        name: `rikuy-report-${localReportId}`,
+        keyvalues: {
+          reportId: localReportId,
+          category: request.category.toString(),
+          protocol: 'rikuy-v2',
+          timestamp: Date.now().toString(),
+        },
+      });
+      const metadataIpfsHash = metadataResult.ipfsHash;
 
       // ── Step 6: Generar commitment anonimo + nullifier ──
       logger.info('Step 6: Generating anonymous commitment');
@@ -237,8 +246,9 @@ class ReportRelayerService {
       const duration = Date.now() - startTime;
       logger.info({
         onChainReportId: relayerResult.reportId,
-        arkivReportId: localReportId,
-        arkivTxId,
+        localReportId,
+        metadataIpfsHash,
+        imageIpfsHash: ipfsHash,
         txHash: relayerResult.txHash,
         contentHashVersion: 2,
         hasCitizenSignature: !!citizenSignatureHash,
@@ -259,7 +269,8 @@ class ReportRelayerService {
         blockchain: {
           transactionHash: relayerResult.txHash,
           blockNumber: relayerResult.blockNumber,
-          arkivTxId,
+          metadataIpfsHash,
+          imageIpfsHash: ipfsHash,
           gasUsed: relayerResult.gasUsed,
           gasCost: relayerResult.gasCost,
         },
@@ -277,11 +288,15 @@ class ReportRelayerService {
 
   async getReport(reportId: string) {
     try {
-      const report = await arkivService.getReport(reportId);
-      if (!report) {
+      // Buscar metadata en Pinata por keyvalue reportId
+      const files = await ipfsService.findByKeyValues({ reportId, protocol: 'rikuy-v2' }, 1);
+
+      if (files.length === 0) {
         throw new Error('Report not found');
       }
 
+      // Descargar metadata JSON desde IPFS
+      const report = await ipfsService.getJSON<ReportMetadata>(files[0].ipfsHash);
       const blockchainStatus = await this.getBlockchainStatus(reportId);
 
       return {
@@ -298,15 +313,53 @@ class ReportRelayerService {
   async getNearbyReports(lat: number, long: number, radiusKm: number = 5) {
     this.validateLocation({ lat, long });
 
-    const reports = await arkivService.getNearbyReports(lat, long, radiusKm);
+    // Listar reportes desde Pinata, filtrar por ubicación en memoria
+    const files = await ipfsService.findByKeyValues({ protocol: 'rikuy-v2' }, 100);
 
-    return reports.map(report => ({
-      reportId: report.reportId,
-      category: report.category.name,
-      description: report.evidence.description,
-      location: report.location.approximate,
-      timestamp: new Date(report.timestamp),
-    }));
+    const reports: any[] = [];
+    for (const file of files) {
+      try {
+        const report = await ipfsService.getJSON<ReportMetadata>(file.ipfsHash);
+        const distance = this.haversineDistance(
+          lat, long,
+          report.location.approximate.lat,
+          report.location.approximate.long,
+        );
+        if (distance <= radiusKm) {
+          reports.push({
+            reportId: report.reportId,
+            category: report.category.name,
+            description: report.evidence.description,
+            location: report.location.approximate,
+            timestamp: new Date(report.timestamp),
+          });
+        }
+      } catch {
+        // Skip reportes con metadata corrupta
+        continue;
+      }
+    }
+
+    return reports;
+  }
+
+  /**
+   * Haversine formula — distancia en km entre dos coordenadas
+   */
+  private haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = this.toRad(lat2 - lat1);
+    const dLon = this.toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRad(deg: number): number {
+    return deg * (Math.PI / 180);
   }
 
   private validateLocation(location: { lat: number; long: number }) {

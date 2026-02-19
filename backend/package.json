@@ -10,7 +10,6 @@
     "test": "jest"
   },
   "dependencies": {
-    "@arkiv-network/sdk": "^0.1.0",
     "@google/generative-ai": "^0.24.1",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
