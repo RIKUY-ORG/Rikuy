@@ -75,6 +75,11 @@ contract DeployAllL3 is Script {
         reportRegistry.grantRole(reportRegistry.CORE_ROLE(), address(rikuyCore));
         rikuyCore.grantRole(rikuyCore.GOVERNMENT_ROLE(), deployer);
 
+        // Grant RELAYER_ROLE to backend wallet (defaults to deployer for dev/testing)
+        address relayerAddress = vm.envOr("RELAYER_ADDRESS", deployer);
+        rikuyCore.addRelayer(relayerAddress);
+        console.log("Relayer: %s", relayerAddress);
+
         governmentRegistry.registerGovernment(deployer, "Gobierno Autonomo Test", "L3 Local");
 
         vm.stopBroadcast();

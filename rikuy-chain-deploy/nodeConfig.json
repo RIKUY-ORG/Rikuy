@@ -40,7 +40,7 @@
       }
     },
     "staker": {
-      "enable": true,
+      "enable": false,
       "strategy": "MakeNodes",
       "parent-chain-wallet": {
         "private-key": "0xd48fa0b9430ed09446908dfb56eba517188431bbf19b495ca7e3e28368ec3152"
@@ -49,12 +49,12 @@
     "dangerous": {
       "no-sequencer-coordinator": true,
       "disable-blob-reader": false
-    },
-    "bold": {
-      "strategy": "MakeNodes"
     }
   },
   "execution": {
+    "rpc": {
+      "tx-fee-cap": 0
+    },
     "forwarding-target": "",
     "sequencer": {
       "enable": true,
