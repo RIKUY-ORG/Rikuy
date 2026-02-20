@@ -1,5 +1,5 @@
 [profile.default]
-src = "src"
+src = "contracts/solidity"
 out = "out"
 libs = ["lib"]
 solc = "0.8.28"
@@ -7,8 +7,8 @@ optimizer = true
 optimizer_runs = 200
 via_ir = true
 
-# Scroll-specific settings
-evm_version = "london"
+# Arbitrum-compatible settings (also works for Orbit L3)
+evm_version = "paris"
 
 # Exclude broken test files from compilation
 exclude = [
@@ -20,14 +20,15 @@ remappings = [
     "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
     "@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
     "@account-abstraction/=lib/account-abstraction/",
-    "@semaphore/=lib/semaphore/packages/contracts/contracts/",
-    "forge-std/=lib/forge-std/src/"
+    "forge-std/=lib/forge-std/src/",
+    "@reclaimprotocol/verifier-solidity-sdk/=node_modules/@reclaimprotocol/verifier-solidity-sdk/"
 ]
 
 # File system permissions
 fs_permissions = [
     { access = "read", path = "$ROOT/out" },
-    { access = "read-write", path = "./deployments" }
+    { access = "read-write", path = "./deployments" },
+    { access = "read-write", path = "./frontend/src/config" }
 ]
 
 # Gas reporting
@@ -40,12 +41,28 @@ runs = 256
 [profile.ci]
 fuzz.runs = 10000
 
-# RPC endpoints
+# ═══════════════════════════════════════════════════════════════
+# RPC ENDPOINTS - Multi-Network Configuration
+# ═══════════════════════════════════════════════════════════════
 [rpc_endpoints]
-scroll_sepolia = "https://sepolia-rpc.scroll.io"
-scroll = "https://rpc.scroll.io"
+# Arbitrum
+arbitrum_sepolia = "https://sepolia-rollup.arbitrum.io/rpc"
+arbitrum_one = "https://arb1.arbitrum.io/rpc"
 
-# Etherscan (para verificación)
+# Rikuy Chain L3 (Arbitrum Orbit) - Set via environment variable
+rikuy_chain = "${RIKUY_CHAIN_RPC_URL}"
+
+# Local development
+localhost = "http://localhost:8545"
+anvil = "http://localhost:8545"
+
+# ═══════════════════════════════════════════════════════════════
+# ETHERSCAN/BLOCK EXPLORER - For contract verification
+# ═══════════════════════════════════════════════════════════════
 [etherscan]
-scroll_sepolia = { key = "${SCROLLSCAN_API_KEY}", url = "https://api-sepolia.scrollscan.com/api" }
-scroll = { key = "${SCROLLSCAN_API_KEY}", url = "https://api.scrollscan.com/api" }
+# Arbitrum
+arbitrum_sepolia = { key = "${ARBISCAN_API_KEY}", url = "https://api-sepolia.arbiscan.io/api" }
+arbitrum_one = { key = "${ARBISCAN_API_KEY}", url = "https://api.arbiscan.io/api" }
+
+# Rikuy Chain L3 (Blockscout explorer)
+rikuy_chain = { key = "${RIKUY_EXPLORER_API_KEY}", url = "${RIKUY_EXPLORER_API_URL}" }

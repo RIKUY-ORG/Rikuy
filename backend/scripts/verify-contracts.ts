@@ -1,86 +1,62 @@
 /**
  * Script para verificar que los contratos estén desplegados correctamente
- * en Scroll Sepolia
+ * en Rikuy Chain L3 (Arbitrum Orbit)
  */
 
 import { ethers } from 'ethers';
 import { config } from '../src/config';
 
-// Direcciones de los contratos desplegados
-const CONTRACTS = {
-  RikuyCore: '0x2b514e6ebaa9a7dEd3f7c6c668708ae92791f478',
-  Treasury: '0xb53cd2E6a71E88C4Df5863CD8c257077cD8C1aa2',
-  ReportRegistry: '0xdc3c4c07e4675cf1BBDEa627026e92170f9F5AE1',
-  MockUSX: '0xD615074c2603336fa0Da8AF44B5CCB9D9C0B2F9c',
-  Paymaster: '0xD65C9aA84b78a2aDea2011CD992F2475a4CD01a0',
-  GovernmentRegistry: '0x9890872bbf4B2DC3fBcA848ECa94799676E6F37e',
-};
-
 async function verifyContracts() {
-  console.log('🔍 Verificando contratos en Scroll Sepolia...\n');
-  console.log(`RPC: ${config.scroll.rpcUrl}\n`);
+  console.log('Verificando contratos en Rikuy Chain L3...\n');
+  console.log(`RPC: ${config.blockchain.rpcUrl}`);
+  console.log(`Chain ID: ${config.blockchain.chainId}\n`);
 
-  // Conectar a Scroll Sepolia
-  const provider = new ethers.JsonRpcProvider(config.scroll.rpcUrl);
+  const provider = new ethers.JsonRpcProvider(config.blockchain.rpcUrl);
+
+  const contracts = {
+    RikuyCoreV2: config.blockchain.contracts.rikuyCoreV2,
+    ReportRegistry: config.blockchain.contracts.reportRegistry,
+    GovernmentRegistry: config.blockchain.contracts.governmentRegistry,
+    AnonymousReport: config.blockchain.contracts.anonymousReport,
+  };
 
   let allValid = true;
 
-  for (const [name, address] of Object.entries(CONTRACTS)) {
+  for (const [name, address] of Object.entries(contracts)) {
+    if (!address) {
+      console.log(`-- ${name.padEnd(20)} Not configured`);
+      continue;
+    }
+
     try {
-      // Verificar que la dirección tenga bytecode
       const code = await provider.getCode(address);
 
       if (code === '0x') {
-        console.log(`❌ ${name.padEnd(20)} ${address} - NO ES UN CONTRATO`);
+        console.log(`FAIL ${name.padEnd(20)} ${address} - NO CONTRACT`);
         allValid = false;
       } else {
-        // Obtener el balance para verificar conectividad
-        const balance = await provider.getBalance(address);
-        const codeSize = (code.length - 2) / 2; // Remover '0x' y dividir por 2
-
-        console.log(`✅ ${name.padEnd(20)} ${address}`);
-        console.log(`   └─ Bytecode size: ${codeSize} bytes`);
-        console.log(`   └─ Balance: ${ethers.formatEther(balance)} ETH`);
+        const codeSize = (code.length - 2) / 2;
+        console.log(`OK   ${name.padEnd(20)} ${address} (${codeSize} bytes)`);
       }
     } catch (error: any) {
-      console.log(`❌ ${name.padEnd(20)} ${address} - ERROR: ${error.message}`);
+      console.log(`FAIL ${name.padEnd(20)} ${address} - ERROR: ${error.message}`);
       allValid = false;
     }
   }
 
-  console.log('\n' + '='.repeat(80));
-
+  console.log('\n' + '='.repeat(60));
   if (allValid) {
-    console.log('✅ TODOS LOS CONTRATOS VERIFICADOS CORRECTAMENTE');
+    console.log('All configured contracts verified');
   } else {
-    console.log('❌ ALGUNOS CONTRATOS NO ESTÁN DESPLEGADOS O SON INVÁLIDOS');
+    console.log('Some contracts are invalid or not deployed');
     process.exit(1);
   }
-
-  console.log('='.repeat(80) + '\n');
-
-  // Verificar configuración del backend
-  console.log('📋 Verificando configuración del backend...\n');
-
-  const configuredAddress = config.scroll.contractAddress;
-  const expectedAddress = CONTRACTS.RikuyCore;
-
-  if (configuredAddress.toLowerCase() === expectedAddress.toLowerCase()) {
-    console.log(`✅ RikuyCore address configurada correctamente`);
-    console.log(`   ${configuredAddress}\n`);
-  } else {
-    console.log(`❌ RikuyCore address NO COINCIDE`);
-    console.log(`   Configurada: ${configuredAddress}`);
-    console.log(`   Esperada:    ${expectedAddress}\n`);
-  }
-
-  console.log('✨ Verificación completa\n');
+  console.log('='.repeat(60) + '\n');
 }
 
-// Ejecutar
 verifyContracts()
   .then(() => process.exit(0))
   .catch((error) => {
-    console.error('Error en verificación:', error);
+    console.error('Verification error:', error);
     process.exit(1);
   });

@@ -1,0 +1,27 @@
+{
+  "name": "rikuy-chain-deploy",
+  "version": "1.0.0",
+  "description": "Deployment script for Rikuy Chain L3 on Arbitrum Orbit",
+  "main": "deploy.ts",
+  "scripts": {
+    "deploy": "ts-node deploy.ts",
+    "check-balance": "ts-node check-balance.ts",
+    "generate-node-config": "ts-node generate-node-config.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@arbitrum/chain-sdk": "^0.24.2"
+  },
+  "devDependencies": {
+    "@arbitrum/orbit-sdk": "^0.24.2",
+    "@types/node": "^25.2.3",
+    "dotenv": "^17.2.4",
+    "ethers": "^5.8.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "viem": "^2.45.2"
+  }
+}

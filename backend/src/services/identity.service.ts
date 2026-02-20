@@ -1,121 +1,124 @@
 import crypto from 'crypto';
-import CryptoJS from 'crypto-js';
-import { config } from '../config';
-import { ocrService } from './ocr.service';
-import { semaphoreService } from './semaphore.service';
+import { relayerService } from './relayer.service';
 import { getServiceLogger } from '../utils/logger';
 import {
   VerifyIdentityRequest,
   VerifyIdentityResponse,
   IdentityStatusResponse,
-  DocumentType,
   VerificationStatus,
-  VerificationMethod,
   RejectionReason,
-  BolivianDepartment,
-  CIValidationResult,
   StoredIdentity,
   VerificationAttempt,
-  isValidDepartment
+  CIValidationResult,
 } from '../types/identity';
 
 const logger = getServiceLogger('IdentityService');
 
+/**
+ * Servicio de identidad — flujo Reclaim Protocol
+ *
+ * Reclaim nos da solo: CI + Nombre completo (desde ciudadaniadigital.bo)
+ *
+ * Flujo:
+ * 1. Frontend obtiene proof de Reclaim → extrae CI + nombre
+ * 2. Frontend envia CI + fullName + walletAddress al backend
+ * 3. Backend valida formato del CI (8 digitos)
+ * 4. Backend verifica que ese CI no este ya registrado (via ciHash)
+ * 5. Backend genera commitment anonimo: keccak256(wallet + salt + nonce)
+ * 6. Backend registra commitment on-chain via relayerService.registerCitizen()
+ * 7. El commitment se usa despues para denuncias anonimas
+ */
 class IdentityService {
   private identities: Map<string, StoredIdentity> = new Map();
   private attempts: Map<string, VerificationAttempt[]> = new Map();
 
-  async verifyDocument(request: VerifyIdentityRequest, ipAddress: string, userAgent: string): Promise<VerifyIdentityResponse> {
-    const userAddress = request.userAddress || 'unknown';
+  /**
+   * Verificar ciudadania y registrar commitment anonimo
+   */
+  async verifyCitizen(
+    request: VerifyIdentityRequest,
+    ipAddress: string,
+    userAgent: string
+  ): Promise<VerifyIdentityResponse> {
+    const { ci, fullName, walletAddress } = request;
 
-    logger.info({ userAddress, documentType: request.documentType }, 'Starting identity verification');
+    logger.info({ walletAddress }, 'Starting citizen verification (Reclaim flow)');
 
     try {
-      this.checkRateLimit(userAddress);
+      // Rate limiting
+      this.checkRateLimit(walletAddress);
 
-      await this.validateImageQuality(request.documentImage.buffer);
-
-      // Intentar OCR pero no es obligatorio - usamos datos del formulario
-      let extracted = null;
-      try {
-        extracted = request.documentType === DocumentType.CI
-          ? await ocrService.extractBolivianCI(request.documentImage.buffer)
-          : await ocrService.extractBolivianPassport(request.documentImage.buffer);
-
-        // Si OCR funciona, validamos coincidencia
-        this.validateExtractedData(extracted, request);
-        logger.info({ ocrSuccess: true }, 'OCR extraction successful');
-      } catch (ocrError: any) {
-        // OCR falló, usamos datos del formulario directamente
-        logger.warn({ error: ocrError.message }, 'OCR failed, using manual data from form');
+      // Validar formato del CI boliviano (8 digitos)
+      const ciValidation = this.validateCI(ci);
+      if (!ciValidation.isValid) {
+        throw new Error(ciValidation.error || 'CI invalido');
       }
 
-      // Validar formato del CI boliviano
-      if (request.documentType === DocumentType.CI) {
-        const validation = this.validateBolivianCI(request.documentNumber, request.expedition || 'LP');
-        if (!validation.isValid) {
-          throw new Error(validation.error || 'CI inválido');
-        }
+      // Validar nombre
+      if (!fullName || fullName.trim().length < 3) {
+        throw new Error('Nombre del ciudadano invalido');
       }
 
-      // Validar datos básicos del formulario
-      if (!request.firstName || request.firstName.length < 2) {
-        throw new Error('Nombre inválido');
-      }
-      if (!request.lastName || request.lastName.length < 2) {
-        throw new Error('Apellido inválido');
-      }
-      if (!request.dateOfBirth) {
-        throw new Error('Fecha de nacimiento requerida');
+      // Verificar que el CI no este ya registrado
+      const ciHash = this.hashCI(ci);
+      const existingByCi = this.findIdentityByCiHash(ciHash);
+      if (existingByCi) {
+        await this.logAttempt(walletAddress, false, RejectionReason.DUPLICATE_IDENTITY, ipAddress, userAgent);
+        throw new Error('Este CI ya ha sido verificado');
       }
 
-      const existingIdentity = this.findIdentityByDocument(request.documentNumber);
-      if (existingIdentity) {
-        await this.logAttempt(userAddress, request.documentType, false, RejectionReason.DUPLICATE_IDENTITY, ipAddress, userAgent);
-        throw new Error('Este documento ya ha sido verificado');
+      // Verificar que el wallet no tenga ya una identidad
+      const existingByWallet = this.identities.get(walletAddress);
+      if (existingByWallet) {
+        await this.logAttempt(walletAddress, false, RejectionReason.DUPLICATE_IDENTITY, ipAddress, userAgent);
+        throw new Error('Este wallet ya tiene una identidad verificada');
       }
 
-      const identity = semaphoreService.generateIdentity(userAddress + request.documentNumber);
+      // Generar commitment anonimo via relayer
+      const nonce = Date.now();
+      const commitment = relayerService.generateCommitment(walletAddress, nonce);
 
-      const txHash = await semaphoreService.addMember(identity.commitment);
+      logger.info({ commitment: commitment.slice(0, 16) + '...' }, 'Anonymous commitment generated');
 
-      logger.info({ commitment: identity.commitment, txHash }, 'Member added to Semaphore group');
+      // Registrar ciudadano on-chain via relayer
+      const { txHash } = await relayerService.registerCitizen({ commitment });
 
-      const storedIdentity = await this.storeIdentity({
-        userAddress,
-        documentType: request.documentType,
-        documentNumber: request.documentNumber,
-        firstName: request.firstName,
-        lastName: request.lastName,
-        dateOfBirth: request.dateOfBirth,
-        identityCommitment: identity.commitment,
-        identitySecret: identity.secret,
-        verificationMethod: VerificationMethod.OCR_AUTO
-      });
+      logger.info({ txHash }, 'Citizen registered on-chain');
 
-      await this.logAttempt(userAddress, request.documentType, true, undefined, ipAddress, userAgent);
+      // Almacenar identidad localmente
+      const storedIdentity: StoredIdentity = {
+        id: crypto.randomUUID(),
+        walletAddress,
+        ciHash,
+        commitment,
+        verifiedAt: new Date(),
+        status: VerificationStatus.VERIFIED,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      this.identities.set(walletAddress, storedIdentity);
+
+      await this.logAttempt(walletAddress, true, undefined, ipAddress, userAgent);
+
+      logger.info({ walletAddress, identityId: storedIdentity.id }, 'Citizen verified and stored');
 
       return {
         success: true,
-        message: 'Identidad verificada exitosamente',
+        message: 'Ciudadania verificada exitosamente',
         data: {
           verified: true,
-          identity: {
-            commitment: identity.commitment,
-            secret: identity.secret
-          },
-          semaphoreGroupId: config.blockchain.contracts.semaphoreAdapter,
+          commitment,
+          txHash,
           status: VerificationStatus.VERIFIED,
-          verifiedAt: new Date().toISOString()
-        }
+          verifiedAt: new Date().toISOString(),
+        },
       };
-
     } catch (error: any) {
-      logger.error({ error: error.message, userAddress }, 'Verification failed');
+      logger.error({ error: error.message, walletAddress }, 'Citizen verification failed');
 
       await this.logAttempt(
-        userAddress,
-        request.documentType,
+        walletAddress,
         false,
         this.categorizeError(error.message),
         ipAddress,
@@ -126,8 +129,8 @@ class IdentityService {
     }
   }
 
-  async getIdentityStatus(userAddress: string): Promise<IdentityStatusResponse> {
-    const identity = this.identities.get(userAddress);
+  async getIdentityStatus(walletAddress: string): Promise<IdentityStatusResponse> {
+    const identity = this.identities.get(walletAddress);
 
     if (!identity) {
       return {
@@ -135,8 +138,8 @@ class IdentityService {
         data: {
           isVerified: false,
           canCreateReports: false,
-          status: VerificationStatus.PENDING
-        }
+          status: VerificationStatus.PENDING,
+        },
       };
     }
 
@@ -145,180 +148,94 @@ class IdentityService {
       data: {
         isVerified: identity.status === VerificationStatus.VERIFIED,
         verifiedAt: identity.verifiedAt.toISOString(),
-        documentType: identity.documentType,
-        semaphoreGroupId: identity.semaphoreGroupId,
-        identityCommitment: identity.identityCommitment,
+        commitment: identity.commitment,
         canCreateReports: identity.status === VerificationStatus.VERIFIED,
-        status: identity.status
-      }
+        status: identity.status,
+      },
     };
   }
 
-  async revokeIdentity(identityCommitment: string, reason: string): Promise<void> {
-    logger.info({ identityCommitment, reason }, 'Revoking identity');
+  async revokeIdentity(commitment: string, reason: string): Promise<void> {
+    logger.info({ commitment: commitment.slice(0, 16) + '...', reason }, 'Revoking identity');
 
     const identity = Array.from(this.identities.values()).find(
-      i => i.identityCommitment === identityCommitment
+      (i) => i.commitment === commitment
     );
 
     if (!identity) {
       throw new Error('Identity not found');
     }
 
-    await semaphoreService.removeMember(identityCommitment);
-
+    // TODO: Revocar on-chain si se implementa en el contrato
     identity.status = VerificationStatus.REVOKED;
     identity.revokedAt = new Date();
     identity.revokedReason = reason;
+    identity.updatedAt = new Date();
 
-    this.identities.set(identity.userAddress, identity);
+    this.identities.set(identity.walletAddress, identity);
 
-    logger.info({ identityCommitment }, 'Identity revoked successfully');
+    logger.info({ commitment: commitment.slice(0, 16) + '...' }, 'Identity revoked');
   }
 
-  validateBolivianCI(ciNumber: string, expedition: string): CIValidationResult {
-    const cleanCI = ciNumber.replace(/\D/g, '');
+  // ──────────────────────────────────────────────────────────────────────────
+  // VALIDATION
+  // ──────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Validar formato del CI boliviano: 8 digitos
+   */
+  validateCI(ci: string): CIValidationResult {
+    const cleanCI = ci.replace(/\D/g, '');
 
     if (cleanCI.length !== 8) {
       return {
         isValid: false,
-        error: 'CI debe tener 8 dígitos'
-      };
-    }
-
-    const cleanExpedition = expedition.toUpperCase().trim();
-
-    if (!isValidDepartment(cleanExpedition)) {
-      return {
-        isValid: false,
-        error: `Departamento inválido: ${cleanExpedition}`
+        error: 'CI debe tener 8 digitos',
       };
     }
 
     return {
       isValid: true,
-      normalized: {
-        number: cleanCI,
-        expedition: cleanExpedition as BolivianDepartment
-      }
+      normalized: cleanCI,
     };
   }
 
-  private async validateImageQuality(imageBuffer: Buffer): Promise<void> {
-    const isValid = await ocrService.validateImageQuality(imageBuffer);
+  // ──────────────────────────────────────────────────────────────────────────
+  // PRIVATE HELPERS
+  // ──────────────────────────────────────────────────────────────────────────
 
-    if (!isValid) {
-      throw new Error('La calidad de la imagen es muy baja. Por favor, toma una foto más clara.');
-    }
+  private hashCI(ci: string): string {
+    return crypto.createHash('sha256').update(ci.replace(/\D/g, '')).digest('hex');
   }
 
-  private validateExtractedData(extracted: any, request: VerifyIdentityRequest): void {
-    if (extracted.confidence < 0.6) {
-      throw new Error('No pudimos leer el documento con claridad. Intenta con una imagen más nítida.');
-    }
-
-    const normalizedExtracted = this.normalizeString(extracted.firstName);
-    const normalizedRequest = this.normalizeString(request.firstName);
-
-    if (!normalizedExtracted.includes(normalizedRequest) && !normalizedRequest.includes(normalizedExtracted)) {
-      logger.warn({
-        extracted: extracted.firstName,
-        provided: request.firstName
-      }, 'Name mismatch detected');
-    }
-  }
-
-  private normalizeString(str: string): string {
-    return str
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim();
-  }
-
-  private findIdentityByDocument(documentNumber: string): StoredIdentity | undefined {
-    const hash = this.hashDocumentNumber(documentNumber);
-
+  private findIdentityByCiHash(ciHash: string): StoredIdentity | undefined {
     return Array.from(this.identities.values()).find(
-      identity => identity.documentNumberHash === hash
+      (identity) => identity.ciHash === ciHash
     );
   }
 
-  private hashDocumentNumber(documentNumber: string): string {
-    return crypto
-      .createHash('sha256')
-      .update(documentNumber)
-      .digest('hex');
-  }
-
-  private encrypt(text: string): string {
-    return CryptoJS.AES.encrypt(text, config.security.jwtSecret).toString();
-  }
-
-  private decrypt(ciphertext: string): string {
-    const bytes = CryptoJS.AES.decrypt(ciphertext, config.security.jwtSecret);
-    return bytes.toString(CryptoJS.enc.Utf8);
-  }
-
-  private async storeIdentity(data: {
-    userAddress: string;
-    documentType: DocumentType;
-    documentNumber: string;
-    firstName: string;
-    lastName: string;
-    dateOfBirth: string;
-    identityCommitment: string;
-    identitySecret: string;
-    verificationMethod: VerificationMethod;
-  }): Promise<StoredIdentity> {
-    const identity: StoredIdentity = {
-      id: crypto.randomUUID(),
-      userAddress: data.userAddress,
-      documentType: data.documentType,
-      documentNumberHash: this.hashDocumentNumber(data.documentNumber),
-      firstNameEncrypted: this.encrypt(data.firstName),
-      lastNameEncrypted: this.encrypt(data.lastName),
-      dateOfBirthEncrypted: this.encrypt(data.dateOfBirth),
-      identityCommitment: data.identityCommitment,
-      identitySecretEncrypted: this.encrypt(data.identitySecret),
-      semaphoreGroupId: config.blockchain.contracts.semaphoreAdapter,
-      verifiedAt: new Date(),
-      verificationMethod: data.verificationMethod,
-      status: VerificationStatus.VERIFIED,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    this.identities.set(data.userAddress, identity);
-
-    logger.info({ userAddress: data.userAddress, identityId: identity.id }, 'Identity stored');
-
-    return identity;
-  }
-
-  private checkRateLimit(userAddress: string): void {
-    const attempts = this.attempts.get(userAddress) || [];
+  private checkRateLimit(walletAddress: string): void {
+    const attempts = this.attempts.get(walletAddress) || [];
 
     const last24h = attempts.filter(
-      a => Date.now() - a.attemptedAt.getTime() < 24 * 60 * 60 * 1000
+      (a) => Date.now() - a.attemptedAt.getTime() < 24 * 60 * 60 * 1000
     );
 
     if (last24h.length >= 3) {
-      throw new Error('Límite de intentos diarios alcanzado (3/día)');
+      throw new Error('Limite de intentos diarios alcanzado (3/dia)');
     }
 
     const lastHour = attempts.filter(
-      a => Date.now() - a.attemptedAt.getTime() < 60 * 60 * 1000
+      (a) => Date.now() - a.attemptedAt.getTime() < 60 * 60 * 1000
     );
 
     if (lastHour.length >= 2) {
-      throw new Error('Límite de intentos por hora alcanzado (2/hora)');
+      throw new Error('Limite de intentos por hora alcanzado (2/hora)');
     }
   }
 
   private async logAttempt(
-    userAddress: string,
-    documentType: DocumentType,
+    walletAddress: string,
     success: boolean,
     failureReason?: RejectionReason,
     ipAddress?: string,
@@ -326,27 +243,27 @@ class IdentityService {
   ): Promise<void> {
     const attempt: VerificationAttempt = {
       id: crypto.randomUUID(),
-      userAddress,
-      documentType,
+      walletAddress,
       success,
       failureReason,
-      failureDetails: undefined,
       ipAddress: ipAddress || 'unknown',
       userAgent: userAgent || 'unknown',
-      attemptedAt: new Date()
+      attemptedAt: new Date(),
     };
 
-    const userAttempts = this.attempts.get(userAddress) || [];
+    const userAttempts = this.attempts.get(walletAddress) || [];
     userAttempts.push(attempt);
-    this.attempts.set(userAddress, userAttempts);
+    this.attempts.set(walletAddress, userAttempts);
   }
 
   private categorizeError(errorMessage: string): RejectionReason {
-    if (errorMessage.includes('calidad')) return RejectionReason.POOR_IMAGE_QUALITY;
-    if (errorMessage.includes('leer')) return RejectionReason.DOCUMENT_NOT_READABLE;
-    if (errorMessage.includes('formato') || errorMessage.includes('dígitos')) return RejectionReason.INVALID_FORMAT;
-    if (errorMessage.includes('duplicado') || errorMessage.includes('verificado')) return RejectionReason.DUPLICATE_IDENTITY;
-    return RejectionReason.INCOMPLETE_DATA;
+    if (errorMessage.includes('CI') || errorMessage.includes('digitos'))
+      return RejectionReason.INVALID_CI_FORMAT;
+    if (errorMessage.includes('verificado') || errorMessage.includes('identidad'))
+      return RejectionReason.DUPLICATE_IDENTITY;
+    if (errorMessage.includes('Limite'))
+      return RejectionReason.RATE_LIMITED;
+    return RejectionReason.RECLAIM_PROOF_FAILED;
   }
 }
 

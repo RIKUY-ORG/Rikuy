@@ -77,15 +77,24 @@ app.listen(PORT, () => {
   logger.info({
     port: PORT,
     environment: config.nodeEnv,
-    scrollRpc: config.blockchain.rpcUrl,
-    arkivRpc: config.arkiv.rpcUrl,
+    rpc: config.blockchain.rpcUrl,
   }, 'Rikuy Backend started successfully');
 
   // Pretty console log for development
   if (config.nodeEnv === 'development') {
     console.log('\n🚀 Rikuy Backend ready');
     console.log(`   → http://localhost:${PORT}`);
-    console.log(`   → Environment: ${config.nodeEnv}\n`);
+    console.log(`   → Environment: ${config.nodeEnv}`);
+
+    // DEV MODE WARNING
+    if (config.devMode) {
+      console.log('\n⚠️  DEV MODE ACTIVE');
+      console.log('   → Some checks may be relaxed for development');
+      console.log('   → DO NOT USE IN PRODUCTION!\n');
+
+      logger.warn({ devMode: config.devMode }, 'DEV MODE ACTIVE');
+    }
+    console.log();
   }
 });
 

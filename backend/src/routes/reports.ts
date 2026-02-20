@@ -1,19 +1,22 @@
 import { Router, Request, Response } from 'express';
 import { reportService } from '../services/report.service';
+import { identityService } from '../services/identity.service';
 import { upload } from '../middleware/upload';
-import { reportRateLimiter } from '../middleware/rateLimit';
 import { validate, schemas } from '../middleware/validation';
 import { CreateReportRequest } from '../types';
+import { config } from '../config';
 
 const router = Router();
 
 /**
  * POST /api/reports
- * Crear nuevo reporte (ENDPOINT PRINCIPAL)
+ * Crear nuevo reporte anonimo
+ *
+ * El walletAddress viene del header x-user-address (set by Privy)
+ * No se requiere zkProof — la anonimidad se maneja con commitments
  */
 router.post(
   '/',
-  // reportRateLimiter, // DESACTIVADO temporalmente - requiere Redis
   upload.single('photo'),
   async (req: Request, res: Response) => {
     try {
@@ -27,20 +30,52 @@ router.post(
       const body = {
         category: parseInt(req.body.category),
         description: req.body.description,
+        // Campos legales Ley 974
+        accusedEntity: req.body.accusedEntity,
+        incidentDate: req.body.incidentDate,
+        detailedDescription: req.body.detailedDescription,
+        evidenceDescription: req.body.evidenceDescription,
+        citizenSignature: req.body.citizenSignature,
         location: JSON.parse(req.body.location),
-        zkProof: JSON.parse(req.body.zkProof),
-        userSecret: req.body.userSecret,
       };
 
       await schemas.createReport.parseAsync(body);
+
+      // walletAddress desde header de Privy (embedded wallet)
+      const walletAddress = req.headers['x-user-address'] as string || undefined;
+
+      // ── Verificar ciudadanía boliviana (Reclaim Protocol) ──
+      // Solo ciudadanos verificados pueden crear reportes (Ley 974)
+      if (!config.devMode) {
+        if (!walletAddress) {
+          return res.status(401).json({
+            success: false,
+            error: 'Wallet address requerido. Conecta tu wallet primero.',
+          });
+        }
+
+        const identity = await identityService.getIdentityStatus(walletAddress);
+        if (!identity.data.canCreateReports) {
+          return res.status(403).json({
+            success: false,
+            error: 'Debes verificar tu ciudadanía boliviana antes de crear reportes.',
+            verificacionUrl: '/verificar-identidad',
+          });
+        }
+      }
 
       const request: CreateReportRequest = {
         photo: req.file,
         category: body.category,
         description: body.description,
+        // Campos legales Ley 974
+        accusedEntity: body.accusedEntity,
+        incidentDate: body.incidentDate,
+        detailedDescription: body.detailedDescription,
+        evidenceDescription: body.evidenceDescription,
+        citizenSignature: body.citizenSignature,
         location: body.location,
-        zkProof: body.zkProof,
-        userSecret: body.userSecret,
+        walletAddress,
       };
 
       const result = await reportService.createReport(request);
@@ -89,7 +124,7 @@ router.get('/nearby', async (req: Request, res: Response) => {
     console.error('[API] Nearby reports error:', error);
     res.status(400).json({
       success: false,
-      error: 'No pudimos buscar reportes cercanos. Verifica tu ubicación e intenta de nuevo.',
+      error: 'No pudimos buscar reportes cercanos. Verifica tu ubicacion e intenta de nuevo.',
     });
   }
 });
@@ -122,9 +157,5 @@ router.get('/:id', async (req: Request, res: Response) => {
     });
   }
 });
-
-// TODO: Implementar endpoint de validación con relayer service si es necesario
-// El sistema de validación se manejará a través del contrato inteligente
-// cuando se implemente la funcionalidad de votación de reportes
 
 export default router;

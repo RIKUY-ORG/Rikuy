@@ -90,7 +90,7 @@ export class RateLimitError extends AppError {
 
 /**
  * Error de servicio externo (502)
- * Uso: Cuando IPFS, Arkiv, OpenAI, etc. fallan
+ * Uso: Cuando IPFS/Pinata, OpenAI, etc. fallan
  */
 export class ExternalServiceError extends AppError {
   public readonly service: string;
@@ -199,10 +199,10 @@ export function createErrorFromException(error: any): AppError {
     );
   }
 
-  // Errores de Arkiv
-  if (errorMessage.includes('Arkiv') || errorMessage.includes('storage')) {
+  // Errores de IPFS/Pinata (storage)
+  if (errorMessage.includes('IPFS') || errorMessage.includes('Pinata') || errorMessage.includes('storage')) {
     return new ExternalServiceError(
-      'Arkiv',
+      'IPFS',
       'No pudimos guardar tu reporte. Por favor intenta de nuevo.',
       { originalError: errorMessage }
     );

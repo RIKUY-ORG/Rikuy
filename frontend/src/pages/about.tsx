@@ -13,7 +13,11 @@ const team = [
     role: "Web3 Developer",
     location: { country: "México", flag: "🇲🇽" },
     bio: "Boliviano que actualmente reside en México gracias a becas de estudio. Fue quien impulsó la idea de RIKUY, inspirado en la necesidad de denunciar la corrupción agravada en su país y en la región.",
+<<<<<<< HEAD
     techStack: ["Scroll", "Arkiv", "Smart Contracts", "Web3"],
+=======
+    techStack: ["Arbitrum Orbit", "Arkiv", "Smart Contracts", "Web3"],
+>>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
     contributions: ["Arquitecto", "DevOps", "Frontend", "Backend"],
     avatar: "https://github.com/firrton.png",
     socials: {

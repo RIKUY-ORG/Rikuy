@@ -1,56 +1,109 @@
 # Environment variables (CRITICAL - NO SUBIR)
 .env
-.env.local
-.env.production
-backend/.env
-backend/.env.local
+.env.*
+**/.env
+**/.env.*
+!.env.example
+**/.env.example
 
 # API Keys y secrets
 *.pem
 *.key
+*.p12
 secrets/
+**/secrets/
 
 # Node modules
 node_modules/
-backend/node_modules/
 **/node_modules/
-backend/node_modules/.package-lock.json
+backend/node_modules/
+rikuy-chain-deploy/node_modules/
+
+# Package lockfiles (generalmente se trackean, pero si quieres ignorarlos)
+# package-lock.json
+# pnpm-lock.yaml
+# yarn.lock
 
 # Build artifacts
+**/dist/
+**/build/
 backend/dist/
-dist/
-build/
+rikuy-chain-deploy/dist/
 
-# Foundry
+# Foundry - Archivos de compilación y cache
 cache/
+**/cache/
 out/
+**/out/
 broadcast/
+**/broadcast/
+forge-cache/
+
+# JSON files - Ignorar la mayoría, excepto configs importantes
 *.json
+# Excepciones importantes - archivos JSON que SÍ queremos trackear
 !package.json
+!package-lock.json
+!pnpm-lock.yaml
 !tsconfig.json
 !backend/src/contracts/abis/*.json
+!frontend/src/config/contracts.json
+!pnpm-workspace.yaml
+!.devcontainer/devcontainer.json
+!foundry.toml
+!hardhat.config.ts
+!**/tsconfig.json
+!**/hardhat.config.ts
+
+# Stylus / Rust
+**/target/
+**/*.wasm
+contracts/stylus/target/
+contracts/stylus/Cargo.lock
 
 # IDE
 .vscode/
+**/.vscode/
 .idea/
+**/.idea/
 *.swp
 *.swo
 *~
 
 # OS
 .DS_Store
+**/.DS_Store
 Thumbs.db
+**/Thumbs.db
 
 # Logs
-*.log
-logs/
+**/*.log
+**/logs/
 backend/logs/
 
 # Testing
-coverage/
-.nyc_output/
+**/coverage/
+**/.nyc_output/
 
 # Temporary files
-tmp/
-temp/
-*.tmp
+**/tmp/
+**/temp/
+**/*.tmp
+
+# Development notes (NO SUBIR - Contiene info sensible)
+**/DEVELOPMENT_NOTES.md
+
+# Specific directories to ignore
+rikuy-chain-deploy/node_modules/
+rikuy-chain-deploy/dist/
+rikuy-chain-deploy/deployment-result.json
+
+# Archive/backup files
+**/*.bak
+**/*.backup
+archive/
+**/archive/
+
+# Deployment specific
+**/deployment-result.json
+**/.chain-deploy/

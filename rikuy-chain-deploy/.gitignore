@@ -1,0 +1,22 @@
+# Dependencias
+node_modules/
+package-lock.json
+yarn.lock
+
+# Archivos de entorno
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+build/
+out/
+
+# Archivos específicos
+deployment-result.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*

@@ -1,10 +1,9 @@
-import { CreateReportRequest, CreateReportResponse, ReportCategory, ArkivReportData } from '../types';
+import { CreateReportRequest, CreateReportResponse, ReportCategory, ReportMetadata } from '../types';
 import { ipfsService } from './ipfs.service';
 import { aiService } from './ai.service';
-import { arkivService } from './arkiv.service';
 import { relayerService } from './relayer.service';
-import { semaphoreService } from './semaphore.service';
 import { getServiceLogger } from '../utils/logger';
+import { config } from '../config';
 import {
   GeofenceError,
   DuplicateImageError,
@@ -12,40 +11,89 @@ import {
   createErrorFromException,
 } from '../utils/errors';
 import crypto from 'crypto';
+import { ethers } from 'ethers';
 
 const logger = getServiceLogger('ReportRelayerService');
 
-interface CreateReportWithProofRequest extends CreateReportRequest {
-  zkProof: {
-    proof: string[];
-    publicSignals: string[];
-  };
-}
-
 class ReportRelayerService {
 
-  async createReport(request: CreateReportWithProofRequest): Promise<CreateReportResponse> {
+  // ─────────────────────────────────────────────────────────────────────────
+  // EIP-712 — Typed structured data for citizen signature verification
+  // ─────────────────────────────────────────────────────────────────────────
+
+  private readonly EIP712_DOMAIN = {
+    name: 'Rikuy',
+    version: '2',
+    chainId: parseInt(process.env.RIKUY_CHAIN_ID || '313370'),
+  };
+
+  private readonly EIP712_TYPES = {
+    RikuyReport: [
+      { name: 'contentHash', type: 'bytes32' },
+      { name: 'category', type: 'uint16' },
+      { name: 'accusedEntity', type: 'string' },
+      { name: 'incidentDate', type: 'string' },
+      { name: 'timestamp', type: 'uint256' },
+    ],
+  };
+
+  /**
+   * Verificar firma EIP-712 del ciudadano
+   * @returns signatureHash si es valida, undefined si no se provee firma
+   * @throws si la firma es invalida
+   */
+  private verifyEIP712Signature(
+    signature: string,
+    message: {
+      contentHash: string;
+      category: number;
+      accusedEntity: string;
+      incidentDate: string;
+      timestamp: number;
+    },
+    expectedAddress: string,
+  ): string {
+    const recovered = ethers.verifyTypedData(
+      this.EIP712_DOMAIN,
+      this.EIP712_TYPES,
+      message,
+      signature,
+    );
+
+    if (recovered.toLowerCase() !== expectedAddress.toLowerCase()) {
+      throw new Error(
+        `EIP-712 signature mismatch: recovered ${recovered}, expected ${expectedAddress}`
+      );
+    }
+
+    logger.info({ recovered }, 'EIP-712 signature verified');
+    return ethers.keccak256(ethers.toUtf8Bytes(signature));
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // REPORT CREATION — Ley 974 compliant
+  // ─────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Crear denuncia anonima con validez legal (Ley 974) — flujo completo:
+   * 1. Upload foto a IPFS (EXIF stripped)
+   * 2. AI analiza imagen (Gemini Pro Vision)
+   * 3. Generar contentHash v2 (incluye campos legales Ley 974)
+   * 4. Verificar firma EIP-712 del ciudadano (si existe)
+   * 5. Almacenar metadata completa en IPFS (Pinata)
+   * 6. Generar commitment anonimo + nullifier
+   * 7. Enviar TX a blockchain via Relayer
+   * 8. Cross-reference reportIds (IPFS <-> on-chain)
+   */
+  async createReport(request: CreateReportRequest): Promise<CreateReportResponse> {
     const startTime = Date.now();
 
     try {
-      logger.info('Starting report creation with relayer');
-
-      logger.info('Step 0: Verifying ZK proof');
-      const proofResult = await semaphoreService.verifyProof(request.zkProof);
-
-      if (!proofResult.isValid) {
-        throw new Error(`Invalid ZK proof: ${proofResult.error}`);
-      }
-
-      const nullifierUsed = await semaphoreService.isNullifierUsed(proofResult.nullifier!);
-      if (nullifierUsed) {
-        throw new Error('This proof has already been used');
-      }
-
-      logger.info({ nullifier: proofResult.nullifier }, 'ZK proof verified successfully');
+      logger.info('Starting Ley 974 compliant report creation');
 
       this.validateLocation(request.location);
 
+      // ── Step 1: Upload foto a IPFS ──
       logger.info('Step 1: Uploading image to IPFS');
       const { ipfsHash, url: imageUrl, fileHash } = await ipfsService.uploadImage(request.photo);
 
@@ -54,6 +102,7 @@ class ReportRelayerService {
         throw new DuplicateImageError();
       }
 
+      // ── Step 2: AI analiza imagen ──
       logger.info('Step 2: AI analyzing image');
       const aiAnalysis = await aiService.analyzeImage(imageUrl, request.category);
 
@@ -62,16 +111,70 @@ class ReportRelayerService {
         throw new ContentModerationError();
       }
 
-      const description = request.description || aiAnalysis.description;
+      // Usar detailedDescription (Ley 974) con fallback a description/AI
+      const detailedDescription = request.detailedDescription || request.description || aiAnalysis.description;
+      const accusedEntity = request.accusedEntity;
+      const incidentDate = request.incidentDate;
+      const evidenceDescription = request.evidenceDescription || '';
 
-      const reportId = this.generateReportId(fileHash, request.location);
+      // ── Step 3: Generar contentHash v2 con campos legales ──
+      // CRITICO: Este hash se almacena on-chain en Stylus (write-once, sin upgrade).
+      // Incluir todos los campos legales garantiza inmutabilidad verificable
+      // segun Ley 974 Art. 18-24.
+      logger.info('Step 3: Generating contentHash v2 (Ley 974 fields)');
+      const contentHashTimestamp = Date.now();
+      const contentHashPayload = {
+        v: 2,
+        ipfsHash,
+        fileHash,
+        category: request.category,
+        accusedEntity,
+        incidentDate,
+        detailedDescription,
+        evidenceDescription,
+        ts: contentHashTimestamp,
+      };
 
-      logger.info('Step 3: Storing in Arkiv');
-      const arkivData: ArkivReportData = {
-        protocol: 'rikuy-v1',
-        version: '2.0.0',
+      const contentHash = ethers.keccak256(
+        ethers.toUtf8Bytes(JSON.stringify(contentHashPayload))
+      );
+
+      // ── Step 4: Verificar firma EIP-712 (si existe) ──
+      const walletAddress = request.walletAddress || ethers.ZeroAddress;
+      let citizenSignatureHash: string | undefined;
+
+      if (request.citizenSignature && walletAddress !== ethers.ZeroAddress) {
+        logger.info('Step 4: Verifying EIP-712 citizen signature');
+        try {
+          citizenSignatureHash = this.verifyEIP712Signature(
+            request.citizenSignature,
+            {
+              contentHash,
+              category: request.category,
+              accusedEntity,
+              incidentDate,
+              timestamp: contentHashTimestamp,
+            },
+            walletAddress,
+          );
+        } catch (sigError: any) {
+          logger.warn({ error: sigError.message }, 'EIP-712 signature verification failed — proceeding without signature');
+          // No bloquear el reporte si la firma falla — es opcional
+        }
+      } else {
+        logger.info('Step 4: No citizen signature provided — skipping EIP-712 verification');
+      }
+
+      // ── Step 5: Almacenar metadata legal en IPFS (Pinata) ──
+      const localReportId = this.generateReportId(fileHash, request.location);
+
+      logger.info('Step 5: Storing complete metadata in IPFS (Pinata)');
+      const reportMetadata: ReportMetadata = {
+        protocol: 'rikuy-v2',
+        version: '3.0.0',
         timestamp: Date.now(),
-        reportId,
+        reportId: localReportId,
+        contentHash,
         category: {
           id: request.category,
           name: this.getCategoryName(request.category),
@@ -79,19 +182,25 @@ class ReportRelayerService {
         evidence: {
           imageIPFS: ipfsHash,
           imageHash: fileHash,
-          description,
-          aiGenerated: !request.description,
+          description: detailedDescription,
+          aiGenerated: !request.detailedDescription && !request.description,
           aiTags: aiAnalysis.tags,
+        },
+        // Campos legales Ley 974 — almacenamiento completo
+        legalFields: {
+          accusedEntity,
+          incidentDate,
+          detailedDescription,
+          evidenceDescription,
+          legalFramework: 'Ley 974 Art. 18-24',
+          contentHashVersion: 2,
+          citizenSignatureHash,
         },
         location: {
           approximate: {
             lat: this.roundCoordinate(request.location.lat),
             long: this.roundCoordinate(request.location.long),
             precision: '~200m',
-          },
-          zkProof: {
-            nullifier: request.zkProof.publicSignals[0],
-            verified: true,
           },
         },
         metadata: {
@@ -100,37 +209,68 @@ class ReportRelayerService {
         },
       };
 
-      const arkivTxId = await arkivService.storeReport(arkivData);
+      const metadataResult = await ipfsService.uploadJSON(reportMetadata, {
+        name: `rikuy-report-${localReportId}`,
+        keyvalues: {
+          reportId: localReportId,
+          category: request.category.toString(),
+          protocol: 'rikuy-v2',
+          timestamp: Date.now().toString(),
+        },
+      });
+      const metadataIpfsHash = metadataResult.ipfsHash;
 
-      logger.info('Step 4: Creating on blockchain via Relayer');
+      // ── Step 6: Generar commitment anonimo + nullifier ──
+      logger.info('Step 6: Generating anonymous commitment');
+      const nonce = Date.now();
+      const commitment = relayerService.generateCommitment(walletAddress, nonce);
+      const nullifier = relayerService.generateNullifier(commitment, fileHash);
+
+      // Coordenadas multiplicadas por 1_000_000 para precision entera
+      const latitude = Math.round(request.location.lat * 1_000_000);
+      const longitude = Math.round(request.location.long * 1_000_000);
+
+      // ── Step 7: Crear reporte on-chain ──
+      logger.info('Step 7: Creating report on blockchain via Relayer');
       const relayerResult = await relayerService.createReport({
-        arkivTxId,
+        contentHash,
         categoryId: request.category,
-        zkProof: request.zkProof,
+        commitment,
+        nullifier,
+        latitude,
+        longitude,
+        aiValidated: aiAnalysis.severity > 0,
       });
 
-      const estimatedReward = this.calculateEstimatedReward(request.category, aiAnalysis.severity);
-
+      // ── Step 8: Cross-reference + response ──
       const duration = Date.now() - startTime;
       logger.info({
-        reportId: relayerResult.reportId,
+        onChainReportId: relayerResult.reportId,
+        localReportId,
+        metadataIpfsHash,
+        imageIpfsHash: ipfsHash,
         txHash: relayerResult.txHash,
+        contentHashVersion: 2,
+        hasCitizenSignature: !!citizenSignatureHash,
         gasCost: relayerResult.gasCost,
         duration,
-      }, 'Report created successfully via relayer');
+      }, 'Ley 974 compliant report created successfully');
 
       return {
         success: true,
         reportId: relayerResult.reportId,
+        contentHash,
         status: 'confirmado' as const,
         recompensa: {
-          puntos: estimatedReward,
-          mensaje: `Podrás ganar hasta ${estimatedReward} puntos cuando tu reporte sea validado`,
+          puntos: 0,
+          mensaje: 'Tu reporte sera validado por la comunidad',
         },
-        mensaje: '¡Reporte creado exitosamente! Está siendo procesado por la comunidad.',
-        _internal: {
-          arkivTxId,
-          scrollTxHash: relayerResult.txHash,
+        mensaje: 'Denuncia registrada con validez legal (Ley 974). Los datos son inmutables en blockchain.',
+        blockchain: {
+          transactionHash: relayerResult.txHash,
+          blockNumber: relayerResult.blockNumber,
+          metadataIpfsHash,
+          imageIpfsHash: ipfsHash,
           gasUsed: relayerResult.gasUsed,
           gasCost: relayerResult.gasCost,
         },
@@ -148,11 +288,15 @@ class ReportRelayerService {
 
   async getReport(reportId: string) {
     try {
-      const report = await arkivService.getReport(reportId);
-      if (!report) {
+      // Buscar metadata en Pinata por keyvalue reportId
+      const files = await ipfsService.findByKeyValues({ reportId, protocol: 'rikuy-v2' }, 1);
+
+      if (files.length === 0) {
         throw new Error('Report not found');
       }
 
+      // Descargar metadata JSON desde IPFS
+      const report = await ipfsService.getJSON<ReportMetadata>(files[0].ipfsHash);
       const blockchainStatus = await this.getBlockchainStatus(reportId);
 
       return {
@@ -169,23 +313,61 @@ class ReportRelayerService {
   async getNearbyReports(lat: number, long: number, radiusKm: number = 5) {
     this.validateLocation({ lat, long });
 
-    const reports = await arkivService.getNearbyReports(lat, long, radiusKm);
+    // Listar reportes desde Pinata, filtrar por ubicación en memoria
+    const files = await ipfsService.findByKeyValues({ protocol: 'rikuy-v2' }, 100);
 
-    return reports.map(report => ({
-      reportId: report.reportId,
-      category: report.category.name,
-      description: report.evidence.description,
-      location: report.location.approximate,
-      timestamp: new Date(report.timestamp),
-    }));
+    const reports: any[] = [];
+    for (const file of files) {
+      try {
+        const report = await ipfsService.getJSON<ReportMetadata>(file.ipfsHash);
+        const distance = this.haversineDistance(
+          lat, long,
+          report.location.approximate.lat,
+          report.location.approximate.long,
+        );
+        if (distance <= radiusKm) {
+          reports.push({
+            reportId: report.reportId,
+            category: report.category.name,
+            description: report.evidence.description,
+            location: report.location.approximate,
+            timestamp: new Date(report.timestamp),
+          });
+        }
+      } catch {
+        // Skip reportes con metadata corrupta
+        continue;
+      }
+    }
+
+    return reports;
+  }
+
+  /**
+   * Haversine formula — distancia en km entre dos coordenadas
+   */
+  private haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Radio de la Tierra en km
+    const dLat = this.toRad(lat2 - lat1);
+    const dLon = this.toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+  }
+
+  private toRad(deg: number): number {
+    return deg * (Math.PI / 180);
   }
 
   private validateLocation(location: { lat: number; long: number }) {
     const { latMin, latMax, longMin, longMax } = {
-      latMin: -55.0,
-      latMax: -21.0,
-      longMin: -73.5,
-      longMax: -53.0,
+      latMin: -23.0,
+      latMax: -9.5,
+      longMin: -70.0,
+      longMax: -57.0,
     };
 
     if (
@@ -194,7 +376,7 @@ class ReportRelayerService {
       location.long < longMin ||
       location.long > longMax
     ) {
-      throw new GeofenceError();
+      throw new GeofenceError('Bolivia');
     }
   }
 
@@ -221,13 +403,6 @@ class ReportRelayerService {
       4: 'Otro',
     };
     return names[category] || 'Otro';
-  }
-
-  private calculateEstimatedReward(category: ReportCategory, severity: number): number {
-    const basePoints = 100;
-    const categoryMultiplier = category === 3 ? 2 : 1;
-    const severityBonus = severity * 10;
-    return basePoints + severityBonus * categoryMultiplier;
   }
 
   private async getBlockchainStatus(reportId: string) {
