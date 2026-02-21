@@ -7,7 +7,7 @@ import { ReclaimService } from '@/services/reclaim.service';
 import { addToast } from '@heroui/toast';
 import DefaultLayout from '@/layouts/default';
 import { title } from '@/components/primitives';
-import { CATEGORY_NAMES, CATEGORIES, type CategoryKey } from '@/config/rikuy';
+import { RIKUY_CONFIG, CATEGORY_NAMES, CATEGORIES, type CategoryKey } from '@/config/rikuy';
 
 interface LocationData {
   lat: number;
@@ -146,8 +146,11 @@ export default function CreateReportPage() {
       }
 
       // Enviar al backend
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/api/reports`, {
+      const response = await fetch(`${RIKUY_CONFIG.BACKEND_API_URL}/api/reports`, {
         method: 'POST',
+        headers: {
+          'x-user-address': user?.wallet?.address || '',
+        },
         body: formData,
       });
 
