@@ -7,9 +7,9 @@ import { Problem } from "./problem";
 import { Solution } from "./solution";
 import { HowItWorks } from "./howItWoerks";
 import { Trust } from "./trust";
-import { CTA } from "./cta";
+import { Available } from "./available";
 import WhoUses from "./whoUses";
-import { boliviaActors } from "@/config/landing/actors";
+// import { boliviaActors } from "@/config/landing/actors";
 import { MetricsSummary } from "./metricsSummary";
 
 const getCountryConfig = () => {
@@ -28,9 +28,9 @@ export default function LandingPage() {
             <Solution config={config.solution} />
             <HowItWorks config={config.howItWorks} />
             <Trust config={config.trust} />
-            <WhoUses actors={boliviaActors} />
+            <WhoUses />
             <MetricsSummary /> 
-            <CTA />
+            <Available />
         </DefaultLayout>
     );
 }
