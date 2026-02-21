@@ -36,14 +36,14 @@
       "max-size": 90000,
       "enable": true,
       "parent-chain-wallet": {
-        "private-key": "0xd48fa0b9430ed09446908dfb56eba517188431bbf19b495ca7e3e28368ec3152"
+        "private-key": "d48fa0b9430ed09446908dfb56eba517188431bbf19b495ca7e3e28368ec3152"
       }
     },
     "staker": {
       "enable": false,
       "strategy": "MakeNodes",
       "parent-chain-wallet": {
-        "private-key": "0xd48fa0b9430ed09446908dfb56eba517188431bbf19b495ca7e3e28368ec3152"
+        "private-key": "d48fa0b9430ed09446908dfb56eba517188431bbf19b495ca7e3e28368ec3152"
       }
     },
     "dangerous": {

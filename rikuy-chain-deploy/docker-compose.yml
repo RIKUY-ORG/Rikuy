@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  nitro-node:
+    image: offchainlabs/nitro-node:v3.9.3-8bc5554  # Versión corregida
+    container_name: rikuy-nitro-node
+    ports:
+      - "8449:8449"
+      - "8547:8547"
+    volumes:
+      - ./nodeConfig.json:/home/user/.arbitrum/config.json
+      - nitro-data:/home/user/.arbitrum/data
+    command: --conf.file /home/user/.arbitrum/config.json
+    restart: unless-stopped
+
+  blockscout:
+    image: blockscout/blockscout:latest
+    container_name: rikuy-blockscout
+    ports:
+      - "4000:4000"
+    environment:
+      - ETHEREUM_JSONRPC_VARIANT=geth
+      - ETHEREUM_JSONRPC_HTTP_URL=http://nitro-node:8547
+      - DATABASE_URL=postgresql://postgres:password@db:5432/blockscout
+    depends_on:
+      - nitro-node
+      - db
+    restart: unless-stopped
+
+  db:
+    image: postgres:15
+    container_name: rikuy-blockscout-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=blockscout
+    volumes:
+      - blockscout-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  nitro-data:
+  blockscout-data:
