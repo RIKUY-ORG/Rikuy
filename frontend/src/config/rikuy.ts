@@ -23,7 +23,8 @@ export const CATEGORIES = {
   OTRO: 4,
 } as const;
 
-export const CATEGORY_NAMES: Record<number, string> = {
+// Nombres legibles para las categorías (por valor numérico)
+export const CATEGORY_NAMES_BY_VALUE: Record<number, string> = {
   [CATEGORIES.INFRAESTRUCTURA]: 'Infraestructura',
   [CATEGORIES.INSEGURIDAD]: 'Inseguridad/Drogas',
   [CATEGORIES.BASURA]: 'Basura',
@@ -31,8 +32,21 @@ export const CATEGORY_NAMES: Record<number, string> = {
   [CATEGORIES.OTRO]: 'Otro',
 };
 
+// Nombres legibles para las categorías (por clave)
+export const CATEGORY_NAMES: Record<keyof typeof CATEGORIES, string> = {
+  INFRAESTRUCTURA: 'Infraestructura',
+  INSEGURIDAD: 'Inseguridad/Drogas',
+  BASURA: 'Basura',
+  CORRUPCION: 'Corrupción',
+  OTRO: 'Otro',
+};
+
 // Storage keys
 export const STORAGE_KEYS = {
   VERIFIED: 'rikuy_verified',
   COMMITMENT: 'rikuy_commitment',
 } as const;
+
+// Tipos de utilidad
+export type CategoryKey = keyof typeof CATEGORIES;
+export type CategoryValue = typeof CATEGORIES[CategoryKey];
