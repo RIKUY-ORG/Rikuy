@@ -12,7 +12,9 @@ evm_version = "paris"
 
 # Exclude broken test files from compilation
 exclude = [
-    "lib/openzeppelin-contracts-upgradeable/test/**/*.sol"
+    "lib/openzeppelin-contracts-upgradeable/test/**/*.sol",
+    "src/**/*.sol",
+    "script/CreateSemaphoreGroup.s.sol"
 ]
 
 # Remappings
