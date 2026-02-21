@@ -7,8 +7,8 @@ import {
   FaInstagram, 
   FaTiktok, 
   FaEnvelope,
-  FaDiscord,
-  FaLinkedin
+  // FaDiscord,
+  // FaLinkedin
 } from "react-icons/fa6";
 import { GoHeartFill } from "react-icons/go";
 import { siteConfig } from "@/config/site";
@@ -55,20 +55,20 @@ const socialLinks = [
 ] as const;
 
 // Redes sociales adicionales (opcional)
-const extraSocialLinks = [
-  {
-    icon: FaDiscord,
-    href: siteConfig.links.discord,
-    label: "Discord",
-    color: "text-default-500 hover:text-indigo-600"
-  },
-  {
-    icon: FaLinkedin,
-    href: siteConfig.links.linkedin,
-    label: "LinkedIn",
-    color: "text-default-500 hover:text-blue-700"
-  }
-];
+// const extraSocialLinks = [
+//   {
+//     icon: FaDiscord,
+//     href: siteConfig.links.discord,
+//     label: "Discord",
+//     color: "text-default-500 hover:text-indigo-600"
+//   },
+//   {
+//     icon: FaLinkedin,
+//     href: siteConfig.links.linkedin,
+//     label: "LinkedIn",
+//     color: "text-default-500 hover:text-blue-700"
+//   }
+// ];
 
 export const Footer = () => {
   return (
