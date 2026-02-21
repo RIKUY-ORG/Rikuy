@@ -48,7 +48,9 @@ For a deeper dive into the business strategy, user adoption, and public policy f
 - 📄 **[Business Model (PDF)](https://drive.google.com/file/d/15qj4aNVQLQ-gmvLMBlShCQp_MtKOij5b/view?usp=sharing)**: Detailed overview of the project's sustainability and go-to-market strategy.
 - 📄 **[One-Pager for Users (PDF)](https://drive.google.com/file/d/1Jf4-pC_qPYkQlGBYohBxpfnUHj4rCeMB/view?usp=sharing)**: High-level summary of the citizen experience and benefits.
 - 🏛️ **[Policy Brief](./docs/policy_brief.md)**: Document aimed at political candidates outlining Rikuy as a solution for modernizing citizen participation and transparency.
-- 📐 **[System Architecture Diagram](./docs/Rikuy_Architecture.excalidraw)**: Visual Excalidraw flowchart of the entire protocol bridging Web2 and Web3.
+
+### System Architecture
+![Rikuy System Architecture Diagram](./docs/Rikuy_architecture.png)
 
 ---
 
