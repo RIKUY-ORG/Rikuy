@@ -146,8 +146,11 @@ export default function CreateReportPage() {
       }
 
       // Enviar al backend
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_API_URL}/api/reports`, {
+      const response = await fetch(`${RIKUY_CONFIG.BACKEND_API_URL}/api/reports`, {
         method: 'POST',
+        headers: {
+          'x-user-address': user?.wallet?.address || '',
+        },
         body: formData,
       });
 
