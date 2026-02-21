@@ -1,0 +1,47 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  # Tu backend de Rikuy
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - REDIS_URL=redis://redis:6379
+      - REDIS_ENABLED=true
+      # ... otras variables de entorno
+    depends_on:
+      - redis
+    networks:
+      - rikuy-network
+
+  # Servicio de Redis
+  redis:
+    image: redis:7-alpine  # Imagen oficial de Redis
+    container_name: rikuy-redis
+    ports:
+      - "6379:6379"  # Solo si necesitas acceso externo
+    volumes:
+      - redis-data:/data  # Persistencia de datos
+    command: redis-server --appendonly yes  # Habilita persistencia
+    restart: unless-stopped
+    networks:
+      - rikuy-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+# Volúmenes para persistencia
+volumes:
+  redis-data:
+
+# Red interna para comunicación entre servicios
+networks:
+  rikuy-network:
+    driver: bridge
