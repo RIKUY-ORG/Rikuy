@@ -52,7 +52,7 @@ router.post(
 
 /**
  * GET /api/identity/status
- * Consultar estado de verificacion
+ * Consultar estado de verificacion (con soporte HTML/JSON)
  */
 router.get('/status', async (req: Request, res: Response) => {
   try {
@@ -60,22 +60,78 @@ router.get('/status', async (req: Request, res: Response) => {
       || (req.headers['x-user-address'] as string);
 
     if (!walletAddress) {
-      return res.status(400).json({
+      return res.formatResponse({
         success: false,
         error: 'Wallet address es requerido',
+        example: '/api/identity/status?walletAddress=0x123...'
+      }, { 
+        title: 'Error - Wallet requerida',
+        template: 'status' 
       });
     }
 
     const status = await identityService.getIdentityStatus(walletAddress);
 
-    res.json(status);
+    // Preparar datos para la respuesta
+    const responseData = {
+      success: true,
+      wallet: walletAddress,
+      data: status,
+      timestamp: Date.now(),
+    };
+
+    // Usar formatResponse para HTML/JSON automático
+    res.formatResponse(responseData, { 
+      title: 'Estado de Verificación', 
+      template: 'status' 
+    });
 
   } catch (error: any) {
     console.error('[API] Get identity status error:', error);
-    res.status(500).json({
+    
+    res.formatResponse({
       success: false,
       error: 'Error al obtener estado de verificacion',
+      wallet: req.query.walletAddress as string || req.headers['x-user-address'] as string,
+    }, { 
+      title: 'Error - Estado de Verificación',
+      template: 'status'
     });
+  }
+});
+
+/**
+ * GET /api/identity/status/html
+ * Versión HTML explícita del estado (opcional, para enlaces directos)
+ */
+router.get('/status/html', async (req: Request, res: Response) => {
+  try {
+    const walletAddress = (req.query.walletAddress as string)
+      || (req.headers['x-user-address'] as string);
+
+    if (!walletAddress) {
+      // Redirigir a la página principal con error
+      return res.redirect('/?error=missing-wallet');
+    }
+
+    const status = await identityService.getIdentityStatus(walletAddress);
+
+    const responseData = {
+      success: true,
+      wallet: walletAddress,
+      data: status,
+      timestamp: Date.now(),
+    };
+
+    // Forzar HTML con template específico
+    res.formatResponse(responseData, { 
+      title: 'Estado de Verificación', 
+      template: 'status' 
+    });
+
+  } catch (error: any) {
+    console.error('[API] Get identity status HTML error:', error);
+    res.redirect('/?error=verification-error');
   }
 });
 

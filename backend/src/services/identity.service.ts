@@ -22,7 +22,7 @@ const logger = getServiceLogger('IdentityService');
  * Flujo:
  * 1. Frontend obtiene proof de Reclaim → extrae CI + nombre
  * 2. Frontend envia CI + fullName + walletAddress al backend
- * 3. Backend valida formato del CI (8 digitos)
+ * 3. Backend valida formato del CI boliviano (5-8 dígitos, opcional complemento)
  * 4. Backend verifica que ese CI no este ya registrado (via ciHash)
  * 5. Backend genera commitment anonimo: keccak256(wallet + salt + nonce)
  * 6. Backend registra commitment on-chain via relayerService.registerCitizen()
@@ -48,18 +48,18 @@ class IdentityService {
       // Rate limiting
       this.checkRateLimit(walletAddress);
 
-      // Validar formato del CI boliviano (8 digitos)
+      // Validar formato del CI boliviano (5-8 dígitos, opcional complemento)
       const ciValidation = this.validateCI(ci);
       if (!ciValidation.isValid) {
-        throw new Error(ciValidation.error || 'CI invalido');
+        throw new Error(ciValidation.error || 'CI inválido');
       }
 
       // Validar nombre
       if (!fullName || fullName.trim().length < 3) {
-        throw new Error('Nombre del ciudadano invalido');
+        throw new Error('Nombre del ciudadano inválido');
       }
 
-      // Verificar que el CI no este ya registrado
+      // Verificar que el CI no este ya registrado (usando solo dígitos para el hash)
       const ciHash = this.hashCI(ci);
       const existingByCi = this.findIdentityByCiHash(ciHash);
       if (existingByCi) {
@@ -182,21 +182,67 @@ class IdentityService {
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * Validar formato del CI boliviano: 8 digitos
+   * Validar formato del CI boliviano:
+   * - Parte numérica: 5-8 dígitos (flexible según rango real)
+   * - Complemento opcional: guión seguido de 1-3 caracteres alfanuméricos
+   * 
+   * Patrón: ^(\d{5,8})(?:-([A-Za-z0-9]{1,3}))?$
+   * 
+   * Ejemplos válidos:
+   *   - 123456 (6 dígitos)
+   *   - 1234567 (7 dígitos)
+   *   - 12345678 (8 dígitos)
+   *   - 1234567-1A (con complemento)
+   *   - 123456-B (con complemento corto)
    */
   validateCI(ci: string): CIValidationResult {
-    const cleanCI = ci.replace(/\D/g, '');
-
-    if (cleanCI.length !== 8) {
+    const trimmedCI = ci.trim();
+    
+    // Patrón para CI boliviano:
+    // - Parte numérica: 5-8 dígitos (ajustable según investigación)
+    // - Complemento opcional: guión seguido de 1-3 caracteres alfanuméricos
+    const ciPattern = /^(\d{5,8})(?:-([A-Za-z0-9]{1,3}))?$/;
+    
+    const match = trimmedCI.match(ciPattern);
+    
+    if (!match) {
       return {
         isValid: false,
-        error: 'CI debe tener 8 digitos',
+        error: 'Formato de CI inválido. Debe contener 5-8 dígitos, opcionalmente con complemento (ej: 1234567-1A)',
+      };
+    }
+
+    const numericPart = match[1];      // Parte numérica (5-8 dígitos)
+    const complement = match[2];       // Complemento opcional
+
+    // Validaciones adicionales
+    if (numericPart.length < 5) {
+      return {
+        isValid: false,
+        error: 'El CI debe tener al menos 5 dígitos',
+      };
+    }
+
+    if (numericPart.length > 8) {
+      return {
+        isValid: false,
+        error: 'El CI no puede tener más de 8 dígitos (sin contar complemento)',
+      };
+    }
+
+    // Si hay complemento, validar longitud
+    if (complement && complement.length > 3) {
+      return {
+        isValid: false,
+        error: 'El complemento del CI no puede exceder 3 caracteres',
       };
     }
 
     return {
       isValid: true,
-      normalized: cleanCI,
+      normalized: trimmedCI,  // Mantener formato original con complemento
+      numericPart,            // Parte numérica para hashing
+      complement,             // Complemento para referencia
     };
   }
 
@@ -204,8 +250,15 @@ class IdentityService {
   // PRIVATE HELPERS
   // ──────────────────────────────────────────────────────────────────────────
 
+  /**
+   * Genera hash del CI usando SOLO la parte numérica
+   * Esto permite que el mismo CI con diferentes complementos
+   * sea detectado como duplicado (casos de duplicidad)
+   */
   private hashCI(ci: string): string {
-    return crypto.createHash('sha256').update(ci.replace(/\D/g, '')).digest('hex');
+    // Extraer solo dígitos para el hash (ignorar complemento y guión)
+    const cleanDigits = ci.replace(/\D/g, '');
+    return crypto.createHash('sha256').update(cleanDigits).digest('hex');
   }
 
   private findIdentityByCiHash(ciHash: string): StoredIdentity | undefined {
@@ -222,7 +275,7 @@ class IdentityService {
     );
 
     if (last24h.length >= 3) {
-      throw new Error('Limite de intentos diarios alcanzado (3/dia)');
+      throw new Error('Límite de intentos diarios alcanzado (3/día)');
     }
 
     const lastHour = attempts.filter(
@@ -230,7 +283,7 @@ class IdentityService {
     );
 
     if (lastHour.length >= 2) {
-      throw new Error('Limite de intentos por hora alcanzado (2/hora)');
+      throw new Error('Límite de intentos por hora alcanzado (2/hora)');
     }
   }
 
@@ -257,11 +310,11 @@ class IdentityService {
   }
 
   private categorizeError(errorMessage: string): RejectionReason {
-    if (errorMessage.includes('CI') || errorMessage.includes('digitos'))
+    if (errorMessage.includes('CI') || errorMessage.includes('dígito') || errorMessage.includes('Formato'))
       return RejectionReason.INVALID_CI_FORMAT;
     if (errorMessage.includes('verificado') || errorMessage.includes('identidad'))
       return RejectionReason.DUPLICATE_IDENTITY;
-    if (errorMessage.includes('Limite'))
+    if (errorMessage.includes('Límite'))
       return RejectionReason.RATE_LIMITED;
     return RejectionReason.RECLAIM_PROOF_FAILED;
   }

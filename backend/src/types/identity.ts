@@ -101,9 +101,20 @@ export interface VerificationAttempt {
 // VALIDATION HELPERS
 // ──────────────────────────────────────────────────────────────────────────
 
+/**
+ * Resultado de validación del CI boliviano
+ * 
+ * @property isValid - Indica si el CI es válido
+ * @property normalized - CI completo con formato original (incluye complemento si existe)
+ * @property numericPart - Solo la parte numérica del CI (sin complemento)
+ * @property complement - Complemento alfanumérico opcional (ej: "1A", "B")
+ * @property error - Mensaje de error si isValid es false
+ */
 export interface CIValidationResult {
   isValid: boolean;
-  normalized?: string;  // CI limpio (solo digitos)
+  normalized?: string;  // CI con formato original (incluye complemento si existe)
+  numericPart?: string; // Solo los dígitos (para hashing y detección de duplicados)
+  complement?: string;  // Complemento opcional (ej: "1A", "B")
   error?: string;
 }
 
