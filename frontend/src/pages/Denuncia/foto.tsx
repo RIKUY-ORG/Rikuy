@@ -7,12 +7,7 @@ import DefaultLayout from "@/layouts/default";
 import { addToast } from "@heroui/toast";
 import { Button } from "@heroui/button";
 import { usePrivy } from "@privy-io/react-auth";
-<<<<<<< HEAD
-import { Identity } from "@semaphore-protocol/core";
-import { SEMAPHORE_CONFIG } from "@/config/semaphore";
-=======
 import { RIKUY_CONFIG, STORAGE_KEYS } from "@/config/rikuy";
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
 
 const videoConstraints = {
   width: 1280,
@@ -87,8 +82,6 @@ export default function PhotoPage() {
       return;
     }
 
-<<<<<<< HEAD
-=======
     // Verificar que el usuario esta verificado
     const isVerified = localStorage.getItem(STORAGE_KEYS.VERIFIED);
     if (!isVerified) {
@@ -100,7 +93,6 @@ export default function PhotoPage() {
       return;
     }
 
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
     setIsSubmitting(true);
 
     try {
@@ -113,44 +105,6 @@ export default function PhotoPage() {
       const location = {
         lat: position.coords.latitude,
         long: position.coords.longitude,
-<<<<<<< HEAD
-      };
-
-      // Paso 2: Generar ZK proof
-      setUploadStatus("Generando prueba de identidad anónima...");
-
-      // Recuperar identity secret del localStorage (guardado en verificación)
-      const identitySecret = localStorage.getItem('rikuy_identity_secret');
-      if (!identitySecret) {
-        throw new Error('No se encontró tu identidad verificada. Por favor verifica tu identidad primero.');
-      }
-
-      const identity = new Identity(identitySecret);
-
-      // Generar proof simple (sin grupo por ahora)
-      const zkProof = {
-        proof: ['0'], // Placeholder
-        publicSignals: [identity.commitment.toString(), '0', '0', '0'],
-      };
-
-      // Paso 3: Convertir imagen base64 a blob
-      setUploadStatus("Verificando imagen con IA...");
-      const blob = await fetch(imageSrc).then(r => r.blob());
-
-      // Paso 4: Preparar FormData
-      const formData = new FormData();
-      formData.append('photo', blob, 'denuncia.jpg');
-      formData.append('category', '0'); // Categoría por defecto
-      formData.append('description', 'Denuncia anónima');
-      formData.append('location', JSON.stringify(location));
-      formData.append('zkProof', JSON.stringify(zkProof));
-      formData.append('userSecret', identitySecret);
-
-      // Paso 5: Enviar al backend
-      setUploadStatus("Subiendo a IPFS, Arkiv y Blockchain...");
-      const response = await fetch(`${SEMAPHORE_CONFIG.BACKEND_API_URL}/api/reports`, {
-        method: 'POST',
-=======
         accuracy: position.coords.accuracy || 10,
       };
 
@@ -172,7 +126,6 @@ export default function PhotoPage() {
         headers: {
           'x-user-address': user.wallet.address,
         },
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
         body: formData,
       });
 
@@ -182,32 +135,17 @@ export default function PhotoPage() {
         throw new Error(result.error || 'Error al crear la denuncia');
       }
 
-<<<<<<< HEAD
-      // Paso 6: Mostrar éxito
-=======
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
       addToast({
         title: "¡Denuncia exitosa!",
         description: "Tu denuncia fue registrada en blockchain",
         color: "success",
       });
 
-<<<<<<< HEAD
-      // Navegar a página de éxito con los datos
-      navigate('/denuncia-exitosa', {
-        state: {
-          reportId: result.data.reportId,
-          ipfsHash: result.data.ipfsHash,
-          arkivHash: result.data.arkivHash,
-          txHash: result.data.txHash,
-          imageUrl: result.data.imageUrl,
-=======
       navigate('/denuncia-exitosa', {
         state: {
           reportId: result.reportId,
           txHash: result._internal?.txHash,
           mensaje: result.mensaje,
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
         }
       });
 
@@ -238,10 +176,6 @@ export default function PhotoPage() {
         )}
 
         <div className="flex flex-col items-center gap-4">
-<<<<<<< HEAD
-          {/* Previsualización */}
-=======
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
           {!imageSrc && (
             <Webcam
               ref={webcamRef}
@@ -257,10 +191,6 @@ export default function PhotoPage() {
             />
           )}
 
-<<<<<<< HEAD
-          {/* Imagen capturada */}
-=======
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
           {imageSrc && (
             <img
               src={imageSrc}
@@ -318,11 +248,7 @@ export default function PhotoPage() {
               <li>✅ IA verificará que la imagen sea apropiada</li>
               <li>✅ Se subirá a IPFS (Pinata) para acceso rápido</li>
               <li>✅ Se guardará en Arkiv por 10 años</li>
-<<<<<<< HEAD
-              <li>✅ Se registrará en Scroll (blockchain)</li>
-=======
               <li>✅ Se registrará en Rikuy Chain (blockchain)</li>
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
               <li>✅ Tu identidad permanecerá 100% anónima</li>
             </ul>
           </div>

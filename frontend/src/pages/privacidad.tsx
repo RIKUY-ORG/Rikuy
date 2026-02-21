@@ -24,11 +24,7 @@ export default function PrivacidadPage() {
           <h2 className="mt-6 font-semibold">Anonimato y seguridad</h2>
           <p className="text-sm text-ink/80 dark:text-milk/80">
             Las denuncias se publican utilizando tu billetera o tu ENS en la red
-<<<<<<< HEAD
-            Scroll. Esto asegura que la información quede registrada de forma
-=======
             Rikuy Chain. Esto asegura que la información quede registrada de forma
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
             transparente en la blockchain, sin comprometer tu identidad. El
             sistema está diseñado para que ninguna persona ni institución pueda
             rastrear quién realizó la denuncia.

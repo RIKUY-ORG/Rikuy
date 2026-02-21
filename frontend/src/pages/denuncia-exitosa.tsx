@@ -131,19 +131,11 @@ export default function DenunciaExitosaPage() {
           {data.txHash && (
             <Card>
               <CardHeader>
-<<<<<<< HEAD
-                <h3 className="text-lg font-semibold">⛓️ Scroll (Blockchain)</h3>
-              </CardHeader>
-              <CardBody className="gap-2">
-                <p className="text-sm text-default-600">
-                  Registro verificable en blockchain Scroll Sepolia
-=======
                 <h3 className="text-lg font-semibold">⛓️ Rikuy Chain (Blockchain)</h3>
               </CardHeader>
               <CardBody className="gap-2">
                 <p className="text-sm text-default-600">
                   Registro verificable en blockchain Rikuy Chain
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
                 </p>
                 <div className="flex items-center justify-between gap-2">
                   <code className="text-sm bg-default-100 p-2 rounded flex-1 overflow-x-auto">
@@ -160,11 +152,7 @@ export default function DenunciaExitosaPage() {
                 </div>
                 <Button
                   as="a"
-<<<<<<< HEAD
-                  href={`https://sepolia.scrollscan.com/tx/${data.txHash}`}
-=======
                   href={`https://explorer.rikuychain.io/tx/${data.txHash}`}
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
                   target="_blank"
                   rel="noopener noreferrer"
                   size="sm"
@@ -172,11 +160,7 @@ export default function DenunciaExitosaPage() {
                   color="primary"
                   endContent={<ExternalLink size={16} />}
                 >
-<<<<<<< HEAD
-                  Ver en Scrollscan
-=======
                   Ver en Explorer
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
                 </Button>
               </CardBody>
             </Card>

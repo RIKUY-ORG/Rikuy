@@ -45,11 +45,7 @@ export default function TerminosPage() {
           <ul className="list-disc list-inside text-sm text-ink/80 dark:text-milk/80 mt-2">
             <li>Acceder a la plataforma de manera libre y anónima.</li>
             <li>Usar RIKUY sin discriminación ni restricciones injustificadas.</li>
-<<<<<<< HEAD
-            <li>Confiar en que sus denuncias serán publicadas de forma transparente en la red Scroll.</li>
-=======
             <li>Confiar en que sus denuncias serán publicadas de forma transparente en la red Rikuy Chain.</li>
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
           </ul>
 
           <h2 className="mt-6 font-semibold">Modificaciones</h2>
