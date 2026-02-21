@@ -3,6 +3,7 @@ pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/AccessControlUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/utils/PausableUpgradeable.sol";
 import "../interfaces/IReportRegistry.sol";
 import "../interfaces/IAnonymousReport.sol";
 
@@ -20,7 +21,7 @@ import "../interfaces/IAnonymousReport.sol";
  * 4. RikuyCoreV2 delega al contrato Stylus para storage + nullifier check
  * 5. Gas subsidiado → Usuario no paga nada
  */
-contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
+contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable, PausableUpgradeable {
 
     bytes32 public constant GOVERNMENT_ROLE = keccak256("GOVERNMENT");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR");
@@ -29,7 +30,7 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
     IReportRegistry public reportRegistry;
     IAnonymousReport public anonymousReport; // Stylus contract
 
-    uint8 public constant VERIFICATION_THRESHOLD = 5;
+    uint8 public verificationThreshold;
 
     // Tracking de validadores por reporte
     mapping(bytes32 => address[]) private reportValidators;
@@ -68,9 +69,12 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
         address _anonymousReport
     ) public initializer {
         __AccessControl_init();
+        __Pausable_init();
 
         _grantRole(DEFAULT_ADMIN_ROLE, _admin);
         _grantRole(OPERATOR_ROLE, _admin);
+
+        verificationThreshold = 5;
 
         reportRegistry = IReportRegistry(_reportRegistry);
         anonymousReport = IAnonymousReport(_anonymousReport);
@@ -81,6 +85,28 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
      */
     function addRelayer(address _relayer) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _grantRole(RELAYER_ROLE, _relayer);
+    }
+
+    /**
+     * @notice Set the verification threshold
+     */
+    function setVerificationThreshold(uint8 _newThreshold) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_newThreshold > 0, "Threshold must be > 0");
+        verificationThreshold = _newThreshold;
+    }
+
+    /**
+     * @notice Pause the contract operations
+     */
+    function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _pause();
+    }
+
+    /**
+     * @notice Unpause the contract operations
+     */
+    function unpause() external onlyRole(DEFAULT_ADMIN_ROLE) {
+        _unpause();
     }
 
     /**
@@ -104,7 +130,7 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
         int64 _latitude,
         int64 _longitude,
         bool _aiValidated
-    ) external onlyRole(RELAYER_ROLE) returns (bytes32 reportId) {
+    ) external onlyRole(RELAYER_ROLE) whenNotPaused returns (bytes32 reportId) {
 
         // Generar ID único del reporte
         reportId = keccak256(abi.encodePacked(
@@ -153,7 +179,7 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
      * @param _commitment El commitment anónimo a registrar
      * @dev Se llama después de que Reclaim Protocol verifica ciudadanía
      */
-    function registerCitizen(bytes32 _commitment) external onlyRole(RELAYER_ROLE) {
+    function registerCitizen(bytes32 _commitment) external onlyRole(RELAYER_ROLE) whenNotPaused {
         anonymousReport.registerCommitment(_commitment);
     }
 
@@ -162,7 +188,7 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
      * @param _reportId ID del reporte
      * @param _isValid true = es real, false = es falso
      */
-    function validateReport(bytes32 _reportId, bool _isValid) external {
+    function validateReport(bytes32 _reportId, bool _isValid) external whenNotPaused {
         require(anonymousReport.reportExists(_reportId), "Report does not exist");
         require(!anonymousReport.isReportResolved(_reportId), "Report already resolved");
         require(!reportRegistry.hasUserValidated(_reportId, msg.sender), "Already validated");
@@ -179,7 +205,7 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
         emit ReportValidated(_reportId, msg.sender, _isValid);
 
         // Auto-verificar si alcanza threshold
-        if (reportUpvotes[_reportId] >= VERIFICATION_THRESHOLD) {
+        if (reportUpvotes[_reportId] >= verificationThreshold) {
             anonymousReport.incrementValidation(_reportId);
             reportRegistry.incrementValidationScore(_reportId);
             emit ReportVerified(_reportId, reportUpvotes[_reportId]);
@@ -194,10 +220,11 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
     function resolveReport(bytes32 _reportId, bool _approved)
         external
         onlyRole(GOVERNMENT_ROLE)
+        whenNotPaused
     {
         require(anonymousReport.reportExists(_reportId), "Report does not exist");
         require(!anonymousReport.isReportResolved(_reportId), "Already resolved");
-        require(reportUpvotes[_reportId] >= VERIFICATION_THRESHOLD, "Not enough validations");
+        require(reportUpvotes[_reportId] >= verificationThreshold, "Not enough validations");
 
         // Marcar como resuelto en Stylus y ReportRegistry
         anonymousReport.resolveReport(_reportId);
@@ -224,7 +251,7 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable {
     {
         upvotes = reportUpvotes[_reportId];
         downvotes = reportDownvotes[_reportId];
-        isVerified = upvotes >= VERIFICATION_THRESHOLD;
+        isVerified = upvotes >= verificationThreshold;
         isResolved = anonymousReport.isReportResolved(_reportId);
 
         if (isResolved) {

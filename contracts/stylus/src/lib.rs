@@ -48,12 +48,12 @@ pub struct AnonymousReport {
     commitments: StorageMap<FixedBytes<32>, StorageBool>,
     total_reports: StorageU256,
     report_ids: StorageMap<U256, StorageFixedBytes<32>>,
+    min_lat: StorageI64,
+    max_lat: StorageI64,
+    min_lon: StorageI64,
+    max_lon: StorageI64,
 }
 
-const BOLIVIA_LAT_MIN: i64 = -23_000_000;
-const BOLIVIA_LAT_MAX: i64 = -9_500_000;
-const BOLIVIA_LON_MIN: i64 = -69_700_000;
-const BOLIVIA_LON_MAX: i64 = -57_400_000;
 const MAX_CATEGORY: u16 = 4;
 
 /// Helper: compute event topic signature at runtime
@@ -76,6 +76,27 @@ impl AnonymousReport {
     pub fn initialize(&mut self, admin: Address) {
         let admin_bytes: FixedBytes<32> = FixedBytes::left_padding_from(admin.as_slice());
         self.admin.set(admin_bytes);
+
+        // Set default Bolivia bounds
+        self.min_lat.set(Signed::<64, 1>::try_from(-23_000_000_i64).unwrap());
+        self.max_lat.set(Signed::<64, 1>::try_from(-9_500_000_i64).unwrap());
+        self.min_lon.set(Signed::<64, 1>::try_from(-69_700_000_i64).unwrap());
+        self.max_lon.set(Signed::<64, 1>::try_from(-57_400_000_i64).unwrap());
+    }
+
+    pub fn update_geographic_bounds(
+        &mut self,
+        min_lat: i64,
+        max_lat: i64,
+        min_lon: i64,
+        max_lon: i64,
+    ) -> Result<(), Vec<u8>> {
+        self.only_admin()?;
+        self.min_lat.set(Signed::<64, 1>::try_from(min_lat).unwrap_or(Signed::<64, 1>::ZERO));
+        self.max_lat.set(Signed::<64, 1>::try_from(max_lat).unwrap_or(Signed::<64, 1>::ZERO));
+        self.min_lon.set(Signed::<64, 1>::try_from(min_lon).unwrap_or(Signed::<64, 1>::ZERO));
+        self.max_lon.set(Signed::<64, 1>::try_from(max_lon).unwrap_or(Signed::<64, 1>::ZERO));
+        Ok(())
     }
 
     pub fn generate_commitment(
@@ -120,10 +141,15 @@ impl AnonymousReport {
             return Err(InvalidCategory { category }.abi_encode());
         }
 
-        if latitude < BOLIVIA_LAT_MIN
-            || latitude > BOLIVIA_LAT_MAX
-            || longitude < BOLIVIA_LON_MIN
-            || longitude > BOLIVIA_LON_MAX
+        let bound_min_lat = self.min_lat.get().as_i64();
+        let bound_max_lat = self.max_lat.get().as_i64();
+        let bound_min_lon = self.min_lon.get().as_i64();
+        let bound_max_lon = self.max_lon.get().as_i64();
+
+        if latitude < bound_min_lat
+            || latitude > bound_max_lat
+            || longitude < bound_min_lon
+            || longitude > bound_max_lon
         {
             return Err(OutOfBoundsLocation { latitude, longitude }.abi_encode());
         }
