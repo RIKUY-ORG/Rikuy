@@ -1,8 +1,59 @@
 import { Router, Request, Response } from 'express';
 import { validate, schemas } from '../middleware/validation';
 import { identityService } from '../services/identity.service';
+import { ReclaimProofRequest } from '@reclaimprotocol/js-sdk';
 
 const router = Router();
+
+/**
+ * POST /api/identity/reclaim-init
+ * Inicializar sesion de Reclaim Protocol desde el backend
+ *
+ * El APP_SECRET nunca se expone al frontend.
+ * El backend genera la requestUrl y statusUrl que el frontend usa
+ * para mostrar el QR y hacer polling por el proof.
+ */
+router.post('/reclaim-init', async (req: Request, res: Response) => {
+  try {
+    const appId = process.env.RECLAIM_APP_ID;
+    const appSecret = process.env.RECLAIM_APP_SECRET;
+    const providerId = process.env.RECLAIM_PROVIDER_ID;
+
+    if (!appId || !appSecret || !providerId) {
+      return res.status(503).json({
+        success: false,
+        error: 'Reclaim Protocol not configured on server',
+      });
+    }
+
+    const reclaimRequest = await ReclaimProofRequest.init(appId, appSecret, providerId);
+    const requestUrl = await reclaimRequest.getRequestUrl();
+
+    // Obtener statusUrl para polling
+    const statusUrl = reclaimRequest.getStatusUrl
+      ? await reclaimRequest.getStatusUrl()
+      : undefined;
+
+    console.log('[Reclaim] Session initialized, requestUrl generated');
+
+    res.json({
+      success: true,
+      data: {
+        requestUrl,
+        statusUrl: statusUrl || null,
+        appId,
+        providerId,
+      },
+    });
+
+  } catch (error: any) {
+    console.error('[API] Reclaim init error:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Error inicializando sesion de Reclaim',
+    });
+  }
+});
 
 /**
  * POST /api/identity/verify

@@ -11,9 +11,11 @@ const app = express();
 
 // CORS configuration
 const allowedOrigins = [
-  'http://localhost:5173', // Local development
+  'http://localhost:5173',
   'http://localhost:3000',
-  'https://rikuy.up.railway.app', // Production frontend
+  'https://rikuy.up.railway.app',
+  'https://rikuyapp.com',
+  'https://www.rikuyapp.com',
 ];
 
 app.use(cors({
