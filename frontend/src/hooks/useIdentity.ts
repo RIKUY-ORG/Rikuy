@@ -27,7 +27,7 @@ export function useIdentity() {
 
           // Reconstruir identidad desde el commitment almacenado
           // NOTA: En producción, esto debería estar cifrado con la wallet del usuario
-          const restoredIdentity = new Identity(identityData.encrypted);
+          const restoredIdentity = new identity(identityData.encrypted);
 
           setIdentity(restoredIdentity);
           setCommitment(restoredIdentity.commitment.toString());
@@ -52,7 +52,7 @@ export function useIdentity() {
       setError(null);
 
       // Generar nueva identidad con seed aleatorio
-      const newIdentity = new Identity();
+      const newIdentity = new identity();
 
       // Preparar datos para almacenar
       const identityData: IdentityStorage = {
@@ -110,7 +110,7 @@ export function useIdentity() {
       setIsLoading(true);
       setError(null);
 
-      const importedIdentity = new Identity(identityString);
+      const importedIdentity = new identity(identityString);
 
       const identityData: IdentityStorage = {
         commitment: importedIdentity.commitment.toString(),

@@ -1,23 +1,5 @@
 import React from "react";
 import { PrivyProvider } from "@privy-io/react-auth";
-<<<<<<< HEAD
-
-export function RikuyPrivyProvider({ children }: { children: React.ReactNode }) {
-  return (
-    <PrivyProvider
-      appId={import.meta.env.VITE_PRIVY_APP_ID}
-      clientId={import.meta.env.VITE_PRIVY_CLIENT_ID}
-      config={{
-        loginMethods: ["wallet", "google"],
-        embeddedWallets: {
-          ethereum: {
-            createOnLogin: "users-without-wallets",
-          },
-        },
-        appearance: {
-          theme: "dark",
-          accentColor: "#4F46E5",
-=======
 import { rikuyChain } from "../config/chain";
 
 export function RikuyPrivyProvider({ children }: { children: React.ReactNode }) {
@@ -48,7 +30,6 @@ export function RikuyPrivyProvider({ children }: { children: React.ReactNode }) 
           accentColor: '#6D28D9',
           logo: '/rikuy-logo.png',
           showWalletLoginFirst: false,
->>>>>>> f0c7a9502aa745d4741595090075b6e8c17ca924
         },
       }}
     >
