@@ -1,13 +1,16 @@
+// src/components/denunciarButton.tsx
 import { Link } from "@heroui/link";
 import { Button } from "@heroui/button";
 import { Tooltip } from "@heroui/tooltip";
 import { button as buttonStyles } from "@heroui/theme";
+import { cn } from "@heroui/theme"; // Opcional: si tienes la función cn de HeroUI
 
 interface DenunciarButtonProps {
   authenticated: boolean;
   isVerified: boolean;
   isLoading: boolean;
   login: () => void;
+  className?: string;  // 👈 AÑADIDO
 }
 
 export function DenunciarButton({
@@ -15,18 +18,22 @@ export function DenunciarButton({
   isVerified,
   isLoading,
   login,
+  className = "",  // 👈 VALOR POR DEFECTO
 }: DenunciarButtonProps) {
   // Usuario NO logueado
   if (!authenticated) {
     return (
       <Button
         onClick={login}
-        className={buttonStyles({
-          color: "primary",
-          radius: "full",
-          variant: "shadow",
-          size: "lg",
-        })}
+        className={cn(
+          buttonStyles({
+            color: "primary",
+            radius: "full",
+            variant: "shadow",
+            size: "lg",
+          }),
+          className  // 👈 CLASE PERSONALIZADA
+        )}
         aria-label="Iniciar sesión para denunciar"
       >
         Inicia sesión para denunciar
@@ -42,7 +49,7 @@ export function DenunciarButton({
         color="warning"
         placement="bottom"
       >
-        <div>
+        <div className={className}>  {/* 👈 CLASE EN EL CONTENEDOR */}
           <Button
             as={Link}
             href="/verificar-identidad"
@@ -51,15 +58,10 @@ export function DenunciarButton({
               radius: "full",
               variant: "flat",
               size: "lg",
+              className: "opacity-50 cursor-not-allowed bg-[#888] text-white hover:bg-[#888] hover:text-white"  // 👈 ESTILOS TAILWIND
             })}
             isDisabled={isLoading}
             aria-label="Verificar identidad para denunciar"
-            style={{
-              opacity: 0.5,
-              cursor: "not-allowed",
-              backgroundColor: "#888",
-              color: "#fff",
-            }}
           >
             {isLoading ? "Verificando..." : "🔒 Denunciar (requiere verificación)"}
           </Button>
@@ -72,12 +74,15 @@ export function DenunciarButton({
   return (
     <Link
       href="/denunciar"
-      className={buttonStyles({
-        color: "primary",
-        radius: "full",
-        variant: "shadow",
-        size: "lg",
-      })}
+      className={cn(
+        buttonStyles({
+          color: "primary",
+          radius: "full",
+          variant: "shadow",
+          size: "lg",
+        }),
+        className  // 👈 CLASE PERSONALIZADA
+      )}
       aria-label="Comenzar una denuncia anónima"
     >
       Denunciar anónimamente
