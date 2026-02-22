@@ -1,0 +1,8 @@
+{
+  "lib/account-abstraction": {
+    "rev": "7af70c8993a6f42973f520ae0752386a5032abe7"
+  },
+  "lib/semaphore": {
+    "rev": "1dc597a17528e521a6eef4287741e2a893c2efc5"
+  }
+}
