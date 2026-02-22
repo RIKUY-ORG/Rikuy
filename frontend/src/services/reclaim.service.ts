@@ -31,8 +31,10 @@ export class ReclaimService {
         'x-user-address': walletAddress,
       },
       body: JSON.stringify({
-        ci: proofData.claimData?.ci || proofData.extractedParameterValues?.ci || '',
-        fullName: proofData.claimData?.fullName || proofData.extractedParameterValues?.fullName || '',
+        // Ciudadania Digital provider devuelve 'usuario' y 'rol'
+        usuario: proofData.claimData?.usuario
+          || proofData.extractedParameterValues?.usuario
+          || '',
         walletAddress,
         reclaimProof: proofData,
       })

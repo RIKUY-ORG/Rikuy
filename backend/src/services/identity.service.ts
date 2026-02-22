@@ -9,7 +9,6 @@ import {
   RejectionReason,
   StoredIdentity,
   VerificationAttempt,
-  CIValidationResult,
 } from '../types/identity';
 
 const logger = getServiceLogger('IdentityService');
@@ -17,16 +16,15 @@ const logger = getServiceLogger('IdentityService');
 /**
  * Servicio de identidad — flujo Reclaim Protocol
  *
- * Reclaim nos da solo: CI + Nombre completo (desde ciudadaniadigital.bo)
+ * Reclaim nos da: 'usuario' + 'rol' (desde ciudadaniadigital.bo)
  *
  * Flujo:
- * 1. Frontend obtiene proof de Reclaim → extrae CI + nombre
- * 2. Frontend envia CI + fullName + walletAddress al backend
- * 3. Backend valida formato del CI boliviano (5-8 dígitos, opcional complemento)
- * 4. Backend verifica que ese CI no este ya registrado (via ciHash)
- * 5. Backend genera commitment anonimo: keccak256(wallet + salt + nonce)
- * 6. Backend registra commitment on-chain via relayerService.registerCitizen()
- * 7. El commitment se usa despues para denuncias anonimas
+ * 1. Frontend obtiene proof de Reclaim → extrae 'usuario' de Ciudadania Digital
+ * 2. Frontend envia usuario + walletAddress al backend
+ * 3. Backend verifica que ese usuario no este ya registrado (via usuarioHash)
+ * 4. Backend genera commitment anonimo: keccak256(wallet + salt + nonce)
+ * 5. Backend registra commitment on-chain via relayerService.registerCitizen()
+ * 6. El commitment se usa despues para denuncias anonimas
  */
 class IdentityService {
   private identities: Map<string, StoredIdentity> = new Map();
@@ -40,7 +38,7 @@ class IdentityService {
     ipAddress: string,
     userAgent: string
   ): Promise<VerifyIdentityResponse> {
-    const { ci, fullName, walletAddress } = request;
+    const { usuario, walletAddress } = request;
 
     logger.info({ walletAddress }, 'Starting citizen verification (Reclaim flow)');
 
@@ -48,23 +46,17 @@ class IdentityService {
       // Rate limiting
       this.checkRateLimit(walletAddress);
 
-      // Validar formato del CI boliviano (5-8 dígitos, opcional complemento)
-      const ciValidation = this.validateCI(ci);
-      if (!ciValidation.isValid) {
-        throw new Error(ciValidation.error || 'CI inválido');
+      // Validar usuario de Ciudadania Digital
+      if (!usuario || usuario.trim().length < 1) {
+        throw new Error('Usuario de Ciudadania Digital inválido');
       }
 
-      // Validar nombre
-      if (!fullName || fullName.trim().length < 3) {
-        throw new Error('Nombre del ciudadano inválido');
-      }
-
-      // Verificar que el CI no este ya registrado (usando solo dígitos para el hash)
-      const ciHash = this.hashCI(ci);
-      const existingByCi = this.findIdentityByCiHash(ciHash);
-      if (existingByCi) {
+      // Verificar que el usuario no este ya registrado
+      const usuarioHash = this.hashUsuario(usuario);
+      const existingByUsuario = this.findIdentityByUsuarioHash(usuarioHash);
+      if (existingByUsuario) {
         await this.logAttempt(walletAddress, false, RejectionReason.DUPLICATE_IDENTITY, ipAddress, userAgent);
-        throw new Error('Este CI ya ha sido verificado');
+        throw new Error('Este usuario de Ciudadania Digital ya ha sido verificado');
       }
 
       // Verificar que el wallet no tenga ya una identidad
@@ -89,7 +81,7 @@ class IdentityService {
       const storedIdentity: StoredIdentity = {
         id: crypto.randomUUID(),
         walletAddress,
-        ciHash,
+        ciHash: usuarioHash,
         commitment,
         verifiedAt: new Date(),
         status: VerificationStatus.VERIFIED,
@@ -178,92 +170,21 @@ class IdentityService {
   }
 
   // ──────────────────────────────────────────────────────────────────────────
-  // VALIDATION
-  // ──────────────────────────────────────────────────────────────────────────
-
-  /**
-   * Validar formato del CI boliviano:
-   * - Parte numérica: 5-8 dígitos (flexible según rango real)
-   * - Complemento opcional: guión seguido de 1-3 caracteres alfanuméricos
-   * 
-   * Patrón: ^(\d{5,8})(?:-([A-Za-z0-9]{1,3}))?$
-   * 
-   * Ejemplos válidos:
-   *   - 123456 (6 dígitos)
-   *   - 1234567 (7 dígitos)
-   *   - 12345678 (8 dígitos)
-   *   - 1234567-1A (con complemento)
-   *   - 123456-B (con complemento corto)
-   */
-  validateCI(ci: string): CIValidationResult {
-    const trimmedCI = ci.trim();
-    
-    // Patrón para CI boliviano:
-    // - Parte numérica: 5-8 dígitos (ajustable según investigación)
-    // - Complemento opcional: guión seguido de 1-3 caracteres alfanuméricos
-    const ciPattern = /^(\d{5,8})(?:-([A-Za-z0-9]{1,3}))?$/;
-    
-    const match = trimmedCI.match(ciPattern);
-    
-    if (!match) {
-      return {
-        isValid: false,
-        error: 'Formato de CI inválido. Debe contener 5-8 dígitos, opcionalmente con complemento (ej: 1234567-1A)',
-      };
-    }
-
-    const numericPart = match[1];      // Parte numérica (5-8 dígitos)
-    const complement = match[2];       // Complemento opcional
-
-    // Validaciones adicionales
-    if (numericPart.length < 5) {
-      return {
-        isValid: false,
-        error: 'El CI debe tener al menos 5 dígitos',
-      };
-    }
-
-    if (numericPart.length > 8) {
-      return {
-        isValid: false,
-        error: 'El CI no puede tener más de 8 dígitos (sin contar complemento)',
-      };
-    }
-
-    // Si hay complemento, validar longitud
-    if (complement && complement.length > 3) {
-      return {
-        isValid: false,
-        error: 'El complemento del CI no puede exceder 3 caracteres',
-      };
-    }
-
-    return {
-      isValid: true,
-      normalized: trimmedCI,  // Mantener formato original con complemento
-      numericPart,            // Parte numérica para hashing
-      complement,             // Complemento para referencia
-    };
-  }
-
-  // ──────────────────────────────────────────────────────────────────────────
   // PRIVATE HELPERS
   // ──────────────────────────────────────────────────────────────────────────
 
   /**
-   * Genera hash del CI usando SOLO la parte numérica
-   * Esto permite que el mismo CI con diferentes complementos
-   * sea detectado como duplicado (casos de duplicidad)
+   * Genera hash del usuario de Ciudadania Digital
+   * Nunca almacenamos el usuario en texto plano
    */
-  private hashCI(ci: string): string {
-    // Extraer solo dígitos para el hash (ignorar complemento y guión)
-    const cleanDigits = ci.replace(/\D/g, '');
-    return crypto.createHash('sha256').update(cleanDigits).digest('hex');
+  private hashUsuario(usuario: string): string {
+    const normalized = usuario.trim().toLowerCase();
+    return crypto.createHash('sha256').update(normalized).digest('hex');
   }
 
-  private findIdentityByCiHash(ciHash: string): StoredIdentity | undefined {
+  private findIdentityByUsuarioHash(usuarioHash: string): StoredIdentity | undefined {
     return Array.from(this.identities.values()).find(
-      (identity) => identity.ciHash === ciHash
+      (identity) => identity.ciHash === usuarioHash
     );
   }
 
@@ -310,7 +231,7 @@ class IdentityService {
   }
 
   private categorizeError(errorMessage: string): RejectionReason {
-    if (errorMessage.includes('CI') || errorMessage.includes('dígito') || errorMessage.includes('Formato'))
+    if (errorMessage.includes('usuario') || errorMessage.includes('Ciudadania'))
       return RejectionReason.INVALID_CI_FORMAT;
     if (errorMessage.includes('verificado') || errorMessage.includes('identidad'))
       return RejectionReason.DUPLICATE_IDENTITY;

@@ -67,7 +67,7 @@ router.post(
   validate(schemas.verifyCitizen),
   async (req: Request, res: Response) => {
     try {
-      const { ci, fullName, reclaimProof } = req.body;
+      const { usuario, reclaimProof } = req.body;
 
       // walletAddress desde body o header de Privy
       const walletAddress = req.body.walletAddress
@@ -84,7 +84,7 @@ router.post(
       const userAgent = req.headers['user-agent'] || 'unknown';
 
       const result = await identityService.verifyCitizen(
-        { ci, fullName, walletAddress, reclaimProof },
+        { usuario, walletAddress, reclaimProof },
         ipAddress,
         userAgent
       );

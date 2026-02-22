@@ -56,10 +56,9 @@ export const schemas = {
     limit: z.number().int().positive().max(100).optional(),
   }),
 
-  // Verificar ciudadania (post Reclaim — solo CI + nombre)
+  // Verificar ciudadania (post Reclaim — Ciudadania Digital devuelve 'usuario' y 'rol')
   verifyCitizen: z.object({
-    ci: z.string().min(7).max(10),             // CI boliviano: 8 digitos (con posible formato)
-    fullName: z.string().min(3).max(100),       // Nombre completo del ciudadano
+    usuario: z.string().min(1).max(100),        // Usuario de Ciudadania Digital Bolivia
     walletAddress: z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(), // Puede venir del header
     reclaimProof: z.any().optional(),           // Proof de Reclaim Protocol
   }),
