@@ -12,6 +12,8 @@
 
 *Empowering citizens to report corruption safely, securely, and immutably.*
 
+[Live App](https://rikuyapp.com) · [Strategic Roadmap](./docs/ROADMAP.md) · [Business Model](https://drive.google.com/file/d/15qj4aNVQLQ-gmvLMBlShCQp_MtKOij5b/view?usp=sharing)
+
 </div>
 
 ---
@@ -94,14 +96,16 @@ User Login (Privy)  -->  ZK Citizenship Proof (Reclaim)  -->  Submit Report + Ph
 | :--- | :--- | :--- |
 | **Blockchain** | Arbitrum Orbit L3 (Chain ID: 313370) | Custom AppChain for ultra-low costs and isolated state |
 | **Smart Contracts** | Rust (Stylus) + Solidity (UUPS Proxies) | High-performance WASM contracts with upgradeable Solidity orchestration |
+| **Contract Framework** | OpenZeppelin Contracts & Contracts-Upgradeable | Battle-tested access control (RBAC), UUPS proxy pattern, and Pausable guards |
 | **Identity / ZK** | Reclaim Protocol | Zero-Knowledge proofs for government ID verification |
 | **Authentication** | Privy | Web2-style login mapped to secure Embedded Wallets |
 | **Storage** | IPFS (Pinata) | Decentralized, immutable storage for photographic evidence |
 | **AI** | Google Gemini Vision | Automated spam prevention and evidence context validation |
+| **RPC Infrastructure** | Alchemy (Pay-As-You-Go) | Reliable parent-chain RPC for L3 node syncing and bridge operations |
 | **Backend** | Node.js, Express, Ethers.js | API Gateway, Gas Relayer, and EXIF metadata stripping |
 | **Frontend** | React, Vite, HeroUI, viem | Responsive citizen-facing application |
 | **Testing** | Foundry (forge) | 73 on-chain tests with fuzz testing (256+ runs) |
-| **Infrastructure** | Docker, systemd, Traefik | 24/7 L3 node and backend on dedicated VPS |
+| **Infrastructure** | Docker, systemd, Cloudflare | 24/7 L3 node, backend services, and global CDN |
 
 ---
 
@@ -134,6 +138,12 @@ Rikuy uses a **cross-language contract architecture** combining Solidity and Rus
 │  │  - CI hash → wallet mapping   │  │  - Activation / deactivation│
 │  └───────────────────────────────┘  └─────────────────────────────┘
 ```
+
+All Solidity contracts inherit from **OpenZeppelin Contracts-Upgradeable**, using:
+- **`AccessControlUpgradeable`** — Role-Based Access Control (RBAC) with `RELAYER_ROLE`, `GOVERNMENT_ROLE`, and `OPERATOR_ROLE`
+- **`UUPSUpgradeable`** — Upgrade-safe proxy pattern with admin-only authorization
+- **`PausableUpgradeable`** — Emergency circuit-breaker for contract operations
+- **`ERC1967Proxy`** — Standard transparent proxy deployment
 
 ### Anonymity Model
 
@@ -179,10 +189,10 @@ Rikuy runs on a dedicated VPS with 24/7 uptime:
 | Service | Endpoint | Status |
 | :--- | :--- | :--- |
 | **Rikuy L3 RPC** | `http://77.42.69.104:8449` | Running (Docker, auto-restart) |
-| **Backend API** | `http://77.42.69.104:3001` | Running (systemd service) |
-| **Frontend** | [rikuyapp.com](https://rikuyapp.com) | Deployed |
+| **Backend API** | [api.rikuyapp.com](https://api.rikuyapp.com) | Running (systemd service) |
+| **Frontend** | [rikuyapp.com](https://rikuyapp.com) | Deployed (Cloudflare Pages) |
 
-Chain ID: **313370** | Nitro Node: **v3.9.3**
+Chain ID: **313370** | Nitro Node: **v3.9.3** | Parent Chain: **Arbitrum Sepolia**
 
 ### Deployed Contracts (Rikuy Chain L3 — Chain ID 313370)
 
@@ -195,53 +205,31 @@ Chain ID: **313370** | Nitro Node: **v3.9.3**
 
 ---
 
-## Documentation & Resources
-
-- **[Strategic Roadmap](./docs/ROADMAP.md)** — Phased go-to-market plan aligned with Bolivia's 2026 elections
-- **[Business Model (PDF)](https://drive.google.com/file/d/15qj4aNVQLQ-gmvLMBlShCQp_MtKOij5b/view?usp=sharing)** — Sustainability and go-to-market strategy
-- **[One-Pager for Users (PDF)](https://drive.google.com/file/d/1Jf4-pC_qPYkQlGBYohBxpfnUHj4rCeMB/view?usp=sharing)** — High-level citizen experience overview
-- **[Policy Brief](./docs/policy_brief.md)** — Document aimed at political candidates for modernizing transparency
-- **[Frontend Integration Guide](./docs/FRONTEND_INTEGRATION.md)** — Developer handoff documentation
-
----
-
-## Project Structure
-
-```
-rikuy/
-├── contracts/
-│   ├── solidity/
-│   │   ├── core/           # RikuyCoreV2, ReportRegistry
-│   │   ├── zk/             # CitizenZkVerifier, Reclaim lib
-│   │   ├── governance/     # GovernmentRegistry
-│   │   └── interfaces/     # IAnonymousReport, IReportRegistry
-│   └── stylus/
-│       └── src/lib.rs      # AnonymousReport (Rust/WASM)
-├── backend/
-│   └── src/
-│       ├── services/       # relayer, report, identity, AI, IPFS
-│       ├── routes/         # API endpoints
-│       └── middleware/     # auth, rate limiting, validation
-├── frontend/
-│   └── src/
-│       ├── pages/          # Landing, Denuncia, Map, Comunidad
-│       ├── components/     # Reclaim verification, avatars, map
-│       └── services/       # report submission, ZK proofs
-├── test/                   # Foundry tests (73 passing)
-├── script/                 # Deployment scripts (Forge)
-└── docs/                   # Architecture, policies, guides
-```
-
----
-
 ## Sponsor Technology Usage
 
 | Sponsor | Integration | Impact |
 | :--- | :--- | :--- |
-| **Arbitrum Orbit** | Custom L3 AppChain (Chain ID 313370) | Dedicated chain with sub-cent gas costs for civic reports |
-| **Arbitrum Stylus** | `AnonymousReport.rs` — core storage contract in Rust/WASM | 10x gas efficiency over equivalent Solidity for compute-heavy operations |
-| **Reclaim Protocol** | ZK citizenship verification via Ciudadania Digital | Sybil-resistant identity without exposing any personal data |
-| **Privy** | Embedded wallets + social login | Complete Web3 abstraction — users never interact with wallets or gas |
+| **Arbitrum Orbit** | Custom L3 AppChain (Chain ID 313370) running Nitro v3.9.3 on dedicated VPS | Dedicated chain with sub-cent gas costs (~0.000006 ETH per tx) for civic reports |
+| **Arbitrum Stylus** | `AnonymousReport.rs` — core storage contract written in Rust, compiled to WASM | Cross-language architecture enabling high-performance on-chain storage with Solidity orchestration |
+| **Reclaim Protocol** | ZK citizenship verification via Bolivia's Ciudadania Digital government portal | Sybil-resistant identity (1 citizen = 1 wallet) without exposing any personal data on-chain |
+| **Privy** | Embedded wallets + Email/Google social login for seamless onboarding | Complete Web3 abstraction — citizens never interact with wallets, seed phrases, or gas |
+| **OpenZeppelin** | `Contracts-Upgradeable` across all Solidity contracts: `AccessControlUpgradeable` (RBAC), `UUPSUpgradeable` (proxy pattern), `PausableUpgradeable` (circuit-breaker), `ERC1967Proxy` (proxy deployment) | Battle-tested security primitives for role management, safe upgradeability, and emergency controls across the entire contract architecture |
+| **Alchemy** | Pay-As-You-Go RPC infrastructure for the L3 Nitro node's parent chain connection (Arbitrum Sepolia) | Reliable high-throughput RPC (10,000 CU/s) enabling fast L3 chain syncing, bridge deposit processing, and cross-chain communication |
+
+---
+
+## Team
+
+<div align="center">
+
+| | | |
+| :---: | :---: | :---: |
+| **Daniel (Firrton)** | **Julio (Tomoki977)** | **Israel (Isra_Street)** |
+| DeFi & RWA Protocol Architect | Full-Stack Developer | Content Creator & CMO |
+| Bolivian currently residing in Mexico. Promoted the idea of Rikuy, inspired by the need to denounce corruption. Winner of five consecutive hackathons. Leads smart contract architecture, backend systems, and blockchain infrastructure. | Full-stack developer focused on accessibility and user experience. Leads the Rikuy frontend, ensuring the platform is simple, inclusive, and usable by anyone regardless of technical background. | Content creator on TikTok (230K followers), focused on Web3 and fintech solutions for Latin America. Leads marketing strategy, institutional relationships, and community growth across Bolivia. |
+| **Web3 Developer EVM** | **Frontend Lead** | **CMO & Business Relations** |
+
+</div>
 
 ---
 
@@ -304,6 +292,45 @@ Rikuy operates as a **B2B SaaS platform** with two revenue products:
 | **RIKUY Insights** | Data intelligence platform with heat maps, territorial analytics, and exportable reports. | $49 - $800+/mo |
 
 > Full pricing structure and Business Model Canvas: **[Business Model (PDF)](https://drive.google.com/file/d/15qj4aNVQLQ-gmvLMBlShCQp_MtKOij5b/view?usp=sharing)**
+
+---
+
+## Documentation & Resources
+
+- **[Strategic Roadmap](./docs/ROADMAP.md)** — Phased go-to-market plan aligned with Bolivia's 2026 elections
+- **[Business Model (PDF)](https://drive.google.com/file/d/15qj4aNVQLQ-gmvLMBlShCQp_MtKOij5b/view?usp=sharing)** — Sustainability and go-to-market strategy
+- **[One-Pager for Users (PDF)](https://drive.google.com/file/d/1Jf4-pC_qPYkQlGBYohBxpfnUHj4rCeMB/view?usp=sharing)** — High-level citizen experience overview
+- **[Policy Brief](./docs/policy_brief.md)** — Document aimed at political candidates for modernizing transparency
+- **[Frontend Integration Guide](./docs/FRONTEND_INTEGRATION.md)** — Developer handoff documentation
+
+---
+
+## Project Structure
+
+```
+rikuy/
+├── contracts/
+│   ├── solidity/
+│   │   ├── core/           # RikuyCoreV2, ReportRegistry
+│   │   ├── zk/             # CitizenZkVerifier, Reclaim lib
+│   │   ├── governance/     # GovernmentRegistry
+│   │   └── interfaces/     # IAnonymousReport, IReportRegistry
+│   └── stylus/
+│       └── src/lib.rs      # AnonymousReport (Rust/WASM)
+├── backend/
+│   └── src/
+│       ├── services/       # relayer, report, identity, AI, IPFS
+│       ├── routes/         # API endpoints
+│       └── middleware/     # auth, rate limiting, validation
+├── frontend/
+│   └── src/
+│       ├── pages/          # Landing, Denuncia, Map, Comunidad
+│       ├── components/     # Reclaim verification, avatars, map
+│       └── services/       # report submission, ZK proofs
+├── test/                   # Foundry tests (73 passing)
+├── script/                 # Deployment scripts (Forge)
+└── docs/                   # Architecture, policies, guides
+```
 
 ---
 
