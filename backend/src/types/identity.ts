@@ -1,6 +1,5 @@
 // Types para verificacion de identidad — flujo Reclaim Protocol
-// Reclaim solo nos da: CI (numero) + Nombre del ciudadano
-// desde ciudadaniadigital.bo
+// Reclaim nos da: 'usuario' + 'rol' desde ciudadaniadigital.bo
 
 export enum VerificationStatus {
   PENDING = 'PENDING',
@@ -32,8 +31,7 @@ export enum BolivianDepartment {
 // ──────────────────────────────────────────────────────────────────────────
 
 export interface ReclaimCitizenData {
-  ci: string;        // Numero de CI boliviano
-  fullName: string;  // Nombre completo del ciudadano
+  usuario: string;   // Usuario de Ciudadania Digital Bolivia
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -41,8 +39,7 @@ export interface ReclaimCitizenData {
 // ──────────────────────────────────────────────────────────────────────────
 
 export interface VerifyIdentityRequest {
-  ci: string;            // CI del ciudadano (de Reclaim)
-  fullName: string;      // Nombre completo (de Reclaim)
+  usuario: string;       // Usuario de Ciudadania Digital (de Reclaim)
   walletAddress: string; // Privy embedded wallet
   reclaimProof?: any;    // Proof de Reclaim Protocol (para verificacion on-chain)
 }

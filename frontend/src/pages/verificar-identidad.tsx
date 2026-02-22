@@ -109,8 +109,7 @@ export default function VerificarIdentidadPage() {
 
     try {
       const body = {
-        ci: documentNumber,
-        fullName: `${firstName} ${lastName}`,
+        usuario: documentNumber,
         walletAddress: user.wallet.address,
       };
 
