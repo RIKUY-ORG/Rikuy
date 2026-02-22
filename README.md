@@ -12,7 +12,7 @@
 
 *Empowering citizens to report corruption safely, securely, and immutably.*
 
-[Live App](https://rikuyapp.com) · [Strategic Roadmap](./docs/ROADMAP.md) · [Business Model](https://drive.google.com/file/d/15qj4aNVQLQ-gmvLMBlShCQp_MtKOij5b/view?usp=sharing)
+[Live App](https://rikuyapp.com) · [Strategic Roadmap](./docs/ROADMAP.md) · [Business Model](https://drive.google.com/file/d/15qj4aNVQLQ-gmvLMBlShCQp_MtKOij5b/view?usp=sharing) · [RoadMap](docs/ROADMAP.md) 
 
 </div>
 
