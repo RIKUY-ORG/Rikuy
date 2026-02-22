@@ -1,4 +1,4 @@
-// src/pages/denuncia-exitosa/index.tsx
+// src/pages/Denuncia/denuncia-exitosa.tsx
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { 
   CheckCircle, 
@@ -12,9 +12,10 @@ import {
   Clock,
   Shield,
   Globe,
-  Database,
   FileText,
-  Award
+  Image,
+  Video,
+  Mic
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import DefaultLayout from "@/layouts/default";
@@ -48,11 +49,9 @@ export default function DenunciaExitosaPage() {
   if (!data) {
     return (
       <DefaultLayout>
-        <section className="flex flex-col items-center gap-6 py-12 md:py-20 px-4">
-          <div className="text-center">
-            <p className="text-default-500">No hay información de denuncia disponible.</p>
-            <p className="text-sm text-default-400 mt-2">Redirigiendo al inicio...</p>
-          </div>
+        <section className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+          <p className="text-default-500">No hay información de denuncia disponible.</p>
+          <p className="text-sm text-default-400 mt-2">Redirigiendo al inicio...</p>
         </section>
       </DefaultLayout>
     );
@@ -97,9 +96,9 @@ export default function DenunciaExitosaPage() {
       fecha: formatDate(),
       categoria: data.category || 'No especificada',
       ipfs: data.ipfsHash || null,
-      arkiv: data.arkivHash || null,
       transaction: data.txHash || null,
       red: 'Rikuy Chain L3',
+      archivos: data.fileCount || 1,
     };
 
     const blob = new Blob([JSON.stringify(receipt, null, 2)], { type: 'application/json' });
@@ -117,84 +116,99 @@ export default function DenunciaExitosaPage() {
     });
   };
 
+  const getFileIcon = () => {
+    if (data.fileCount > 1) return <FileText size={24} className="text-primary-500" />;
+    if (data.source === 'photo') return <Image size={24} className="text-blue-500" />;
+    if (data.source === 'video') return <Video size={24} className="text-purple-500" />;
+    if (data.source === 'audio') return <Mic size={24} className="text-green-500" />;
+    return <FileText size={24} className="text-orange-500" />;
+  };
+
   return (
     <DefaultLayout>
       <motion.section 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="flex flex-col items-center gap-6 py-12 md:py-20 px-4"
+        className="flex flex-col items-center gap-6 py-8 md:py-12 px-4 min-h-screen"
       >
-        {/* Header con animación */}
+        {/* Header con animación - Responsive */}
         <motion.div 
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: "spring", stiffness: 200, damping: 20 }}
-          className="flex flex-col items-center gap-4 max-w-2xl"
+          className="flex flex-col items-center gap-4 w-full max-w-2xl"
         >
           <div className="relative">
-            <div className="absolute inset-0 bg-success-500/20 rounded-full blur-2xl" />
-            <CheckCircle size={100} className="text-success-500 relative z-10" />
+            <div className="absolute inset-0 bg-success-500/20 rounded-full blur-2xl scale-150" />
+            <CheckCircle size={80} className="text-success-500 relative z-10 md:w-[100px] md:h-[100px]" />
           </div>
           <h1 className={title()}>¡Denuncia Exitosa!</h1>
-          <div className="flex items-center gap-2">
-            <Chip color="success" variant="flat" size="lg">
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Chip color="success" variant="flat" size="md" className="text-sm md:text-base">
               {formatDate()}
             </Chip>
-            <Chip color="primary" variant="flat" size="lg">
+            <Chip color="primary" variant="flat" size="md" className="text-sm md:text-base">
               #{data.reportId.slice(0, 8)}
             </Chip>
           </div>
-          <p className="text-center text-default-600 max-w-lg">
-            Tu denuncia ha sido registrada de forma anónima y segura en múltiples redes descentralizadas.
-            Los siguientes identificadores garantizan su integridad y permanencia.
+          <p className="text-center text-default-600 max-w-lg px-2 text-sm md:text-base">
+            Tu denuncia ha sido registrada de forma anónima y segura en IPFS y Rikuy Chain.
           </p>
         </motion.div>
 
-        {/* Grid de tarjetas */}
+        {/* Grid de tarjetas - Responsive */}
         <div className="w-full max-w-3xl space-y-4 mt-4">
-          {/* Resumen rápido */}
+          {/* Resumen rápido - Responsive */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
           >
             <Card className="border-l-4 border-success-500">
-              <CardBody className="flex flex-row items-center gap-4 p-4">
-                <div className="p-3 bg-success-100 dark:bg-success-900/20 rounded-full">
-                  <Award size={24} className="text-success-600" />
+              <CardBody className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
+                  <div className="p-3 bg-success-100 dark:bg-success-900/20 rounded-full flex-shrink-0">
+                    {getFileIcon()}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs text-default-500">Categoría</p>
+                    <p className="text-xl md:text-2xl font-bold text-success-600 break-words">
+                      {data.category || 'No especificada'}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold">Categoría</p>
-                  <p className="text-2xl font-bold text-success-600">{data.category || 'No especificada'}</p>
-                </div>
-                <div className="flex-1 text-right">
-                  <p className="text-xs text-default-400">ID: {data.reportId.slice(0, 16)}...</p>
+                <div className="flex items-center gap-2 sm:ml-auto w-full sm:w-auto justify-between sm:justify-end">
+                  <Chip size="sm" color="primary" variant="flat" className="text-xs">
+                    {data.fileCount || 1} {data.fileCount === 1 ? 'archivo' : 'archivos'}
+                  </Chip>
+                  <p className="text-xs text-default-400 hidden sm:block">ID: {data.reportId.slice(0, 16)}...</p>
                 </div>
               </CardBody>
             </Card>
           </motion.div>
 
-          {/* Redes de almacenamiento */}
+          {/* Redes de almacenamiento - Grid responsivo */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* ID del Reporte */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
+              className="w-full"
             >
               <Card className="h-full">
-                <CardHeader className="pb-0">
+                <CardHeader className="pb-0 flex-col items-start gap-1">
                   <div className="flex items-center gap-2">
-                    <FileText size={20} className="text-primary-500" />
-                    <h3 className="text-lg font-semibold">ID del Reporte</h3>
+                    <FileText size={20} className="text-primary-500 flex-shrink-0" />
+                    <h3 className="text-base md:text-lg font-semibold">ID del Reporte</h3>
                   </div>
                 </CardHeader>
                 <CardBody>
                   <p className="text-xs text-default-500 mb-2">
-                    Identificador único de tu denuncia en el sistema
+                    Identificador único de tu denuncia
                   </p>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <code className="text-xs bg-default-100 dark:bg-default-800 p-2 rounded flex-1 overflow-x-auto">
                       {data.reportId}
                     </code>
@@ -212,25 +226,26 @@ export default function DenunciaExitosaPage() {
               </Card>
             </motion.div>
 
-            {/* IPFS */}
+            {/* IPFS (reemplaza Arkiv) */}
             {data.ipfsHash && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
+                className="w-full"
               >
                 <Card className="h-full border-l-4 border-blue-500">
-                  <CardHeader className="pb-0">
+                  <CardHeader className="pb-0 flex-col items-start gap-1">
                     <div className="flex items-center gap-2">
-                      <Globe size={20} className="text-blue-500" />
-                      <h3 className="text-lg font-semibold">IPFS (Pinata)</h3>
+                      <Globe size={20} className="text-blue-500 flex-shrink-0" />
+                      <h3 className="text-base md:text-lg font-semibold">IPFS (Pinata)</h3>
                     </div>
                   </CardHeader>
                   <CardBody>
                     <p className="text-xs text-default-500 mb-2">
-                      Tu evidencia está disponible en la red IPFS para acceso descentralizado
+                      Tu evidencia está disponible en la red IPFS
                     </p>
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <code className="text-xs bg-default-100 dark:bg-default-800 p-2 rounded flex-1 overflow-x-auto">
                         {data.ipfsHash}
                       </code>
@@ -244,58 +259,20 @@ export default function DenunciaExitosaPage() {
                         <Copy size={16} />
                       </Button>
                     </div>
-                    {data.imageUrl && (
-                      <Button
-                        as="a"
-                        href={data.imageUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        size="sm"
-                        variant="flat"
-                        color="primary"
-                        fullWidth
-                        endContent={<ExternalLink size={14} />}
-                      >
-                        Ver evidencia en IPFS
-                      </Button>
-                    )}
-                  </CardBody>
-                </Card>
-              </motion.div>
-            )}
-
-            {/* Arkiv */}
-            {data.arkivHash && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-              >
-                <Card className="h-full border-l-4 border-purple-500">
-                  <CardHeader className="pb-0">
-                    <div className="flex items-center gap-2">
-                      <Database size={20} className="text-purple-500" />
-                      <h3 className="text-lg font-semibold">Arkiv (Almacenamiento Inmutable)</h3>
-                    </div>
-                  </CardHeader>
-                  <CardBody>
-                    <p className="text-xs text-default-500 mb-2">
-                      Tus datos están guardados de forma inmutable por 10 años
-                    </p>
-                    <div className="flex items-center gap-2">
-                      <code className="text-xs bg-default-100 dark:bg-default-800 p-2 rounded flex-1 overflow-x-auto">
-                        {data.arkivHash}
-                      </code>
-                      <Button
-                        isIconOnly
-                        size="sm"
-                        variant={copiedItem === 'arkiv' ? "solid" : "light"}
-                        color={copiedItem === 'arkiv' ? "success" : "default"}
-                        onClick={() => copyToClipboard(data.arkivHash, "Hash Arkiv", "arkiv")}
-                      >
-                        <Copy size={16} />
-                      </Button>
-                    </div>
+                    <Button
+                      as="a"
+                      href={`https://gateway.pinata.cloud/ipfs/${data.ipfsHash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      size="sm"
+                      variant="flat"
+                      color="primary"
+                      fullWidth
+                      className="mt-2 text-xs"
+                      endContent={<ExternalLink size={14} />}
+                    >
+                      Ver en IPFS
+                    </Button>
                   </CardBody>
                 </Card>
               </motion.div>
@@ -306,20 +283,21 @@ export default function DenunciaExitosaPage() {
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
+                transition={{ delay: 0.4 }}
+                className="w-full md:col-span-2"
               >
                 <Card className="h-full border-l-4 border-green-500">
-                  <CardHeader className="pb-0">
+                  <CardHeader className="pb-0 flex-col items-start gap-1">
                     <div className="flex items-center gap-2">
-                      <Shield size={20} className="text-green-500" />
-                      <h3 className="text-lg font-semibold">Rikuy Chain (L3)</h3>
+                      <Shield size={20} className="text-green-500 flex-shrink-0" />
+                      <h3 className="text-base md:text-lg font-semibold">Rikuy Chain (L3)</h3>
                     </div>
                   </CardHeader>
                   <CardBody>
                     <p className="text-xs text-default-500 mb-2">
                       Registro verificable en blockchain, inmutable y público
                     </p>
-                    <div className="flex items-center gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap mb-2">
                       <code className="text-xs bg-default-100 dark:bg-default-800 p-2 rounded flex-1 overflow-x-auto">
                         {data.txHash}
                       </code>
@@ -342,6 +320,7 @@ export default function DenunciaExitosaPage() {
                       variant="flat"
                       color="success"
                       fullWidth
+                      className="text-xs"
                       endContent={<ExternalLink size={14} />}
                     >
                       Ver en Explorer
@@ -352,34 +331,36 @@ export default function DenunciaExitosaPage() {
             )}
           </div>
 
-          {/* Línea de tiempo */}
+          {/* Línea de tiempo - Responsive */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.5 }}
           >
             <Card>
-              <CardHeader>
+              <CardHeader className="flex-col items-start gap-2">
                 <div className="flex items-center gap-2">
                   <Clock size={20} className="text-default-500" />
-                  <h3 className="text-lg font-semibold">Línea de tiempo</h3>
+                  <h3 className="text-base md:text-lg font-semibold">Línea de tiempo</h3>
                 </div>
               </CardHeader>
               <CardBody>
-                <div className="flex flex-wrap gap-4 justify-between">
-                  <div className="flex-1">
+                <div className="flex flex-col sm:flex-row gap-4 sm:gap-2 justify-between">
+                  <div className="flex-1 text-center sm:text-left">
                     <p className="text-xs text-default-400">Creación</p>
-                    <p className="font-semibold">{formatDate()}</p>
+                    <p className="text-sm font-semibold">{formatDate()}</p>
                   </div>
-                  <Divider orientation="vertical" className="h-10" />
-                  <div className="flex-1">
+                  <Divider orientation="vertical" className="hidden sm:block h-10" />
+                  <Divider className="block sm:hidden" />
+                  <div className="flex-1 text-center sm:text-left">
                     <p className="text-xs text-default-400">Almacenamiento</p>
-                    <p className="font-semibold">IPFS + Arkiv</p>
+                    <p className="text-sm font-semibold">IPFS</p>
                   </div>
-                  <Divider orientation="vertical" className="h-10" />
-                  <div className="flex-1">
+                  <Divider orientation="vertical" className="hidden sm:block h-10" />
+                  <Divider className="block sm:hidden" />
+                  <div className="flex-1 text-center sm:text-left">
                     <p className="text-xs text-default-400">Blockchain</p>
-                    <p className="font-semibold">Confirmada</p>
+                    <p className="text-sm font-semibold">Confirmada</p>
                   </div>
                 </div>
               </CardBody>
@@ -390,15 +371,15 @@ export default function DenunciaExitosaPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
+            transition={{ delay: 0.6 }}
             className="space-y-4"
           >
             {/* Botones de compartir */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex-col items-start gap-2">
                 <div className="flex items-center gap-2">
                   <Share2 size={20} className="text-default-500" />
-                  <h3 className="text-lg font-semibold">Compartir</h3>
+                  <h3 className="text-base md:text-lg font-semibold">Compartir</h3>
                 </div>
               </CardHeader>
               <CardBody>
@@ -411,6 +392,7 @@ export default function DenunciaExitosaPage() {
                     variant="bordered"
                     startContent={<Twitter size={16} />}
                     onClick={shareOnTwitter}
+                    className="flex-1 min-w-[100px] text-xs"
                   >
                     Twitter
                   </Button>
@@ -419,6 +401,7 @@ export default function DenunciaExitosaPage() {
                     variant="bordered"
                     startContent={<Facebook size={16} />}
                     onClick={shareOnFacebook}
+                    className="flex-1 min-w-[100px] text-xs"
                   >
                     Facebook
                   </Button>
@@ -427,6 +410,7 @@ export default function DenunciaExitosaPage() {
                     variant="bordered"
                     startContent={<Linkedin size={16} />}
                     onClick={shareOnLinkedIn}
+                    className="flex-1 min-w-[100px] text-xs"
                   >
                     LinkedIn
                   </Button>
@@ -435,6 +419,7 @@ export default function DenunciaExitosaPage() {
                     variant="bordered"
                     startContent={<Download size={16} />}
                     onClick={downloadReceipt}
+                    className="flex-1 min-w-[100px] text-xs"
                   >
                     Comprobante
                   </Button>
@@ -446,31 +431,31 @@ export default function DenunciaExitosaPage() {
             <Card className="bg-gradient-to-br from-primary-50 to-secondary-50 dark:from-primary-900/20 dark:to-secondary-900/20 border border-primary-200 dark:border-primary-800">
               <CardBody>
                 <p className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Shield size={20} className="text-primary-600" />
-                  Tu privacidad está garantizada
+                  <Shield size={20} className="text-primary-600 flex-shrink-0" />
+                  <span>Tu privacidad está garantizada</span>
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                   <div className="flex items-start gap-2">
-                    <CheckCircle size={14} className="text-success-500 mt-0.5" />
-                    <span>Tu identidad real nunca se revela</span>
+                    <CheckCircle size={14} className="text-success-500 mt-0.5 flex-shrink-0" />
+                    <span>Identidad anónima</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <CheckCircle size={14} className="text-success-500 mt-0.5" />
-                    <span>Solo se usa prueba ZK (conocimiento cero)</span>
+                    <CheckCircle size={14} className="text-success-500 mt-0.5 flex-shrink-0" />
+                    <span>Pruebas ZK</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <CheckCircle size={14} className="text-success-500 mt-0.5" />
-                    <span>Ubicación aproximada ~200m</span>
+                    <CheckCircle size={14} className="text-success-500 mt-0.5 flex-shrink-0" />
+                    <span>Ubicación aproximada</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <CheckCircle size={14} className="text-success-500 mt-0.5" />
-                    <span>Datos inmutables y verificables</span>
+                    <CheckCircle size={14} className="text-success-500 mt-0.5 flex-shrink-0" />
+                    <span>Datos inmutables</span>
                   </div>
                 </div>
               </CardBody>
             </Card>
 
-            {/* Botones de navegación */}
+            {/* Botones de navegación - Responsive */}
             <div className="flex flex-col sm:flex-row gap-3 pt-4">
               <Button
                 as={Link}
@@ -479,16 +464,18 @@ export default function DenunciaExitosaPage() {
                 variant="solid"
                 fullWidth
                 size="lg"
+                className="text-sm md:text-base"
               >
                 Hacer otra denuncia
               </Button>
               <Button
                 as={Link}
-                to="/mis-denuncias"
+                to="/perfil"
                 color="secondary"
                 variant="bordered"
                 fullWidth
                 size="lg"
+                className="text-sm md:text-base"
               >
                 Ver mis denuncias
               </Button>
@@ -499,6 +486,7 @@ export default function DenunciaExitosaPage() {
                 variant="flat"
                 fullWidth
                 size="lg"
+                className="text-sm md:text-base"
               >
                 Volver al inicio
               </Button>
