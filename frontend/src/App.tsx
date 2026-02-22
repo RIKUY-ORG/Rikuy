@@ -7,20 +7,24 @@ import TerminosPage from "./pages/terminos";
 import ContactoPage from "@/pages/contacto";
 import TutorialPage from "@/pages/tutorial";
 import AyudaPage from "@/pages/ayuda";
-import DenunciarPage from "./pages/Denuncia";
 import ComoFuncionaPage from "./pages/comoFunciona";
+import DenunciarPage from "./pages/Denuncia";
 import PhotoPage from "./pages/Denuncia/foto";
 import VideoPage from "./pages/Denuncia/video";
 import RecorderPage from "./pages/Denuncia/audio";
+import SubirPage from "./pages/Denuncia/subir";
+import CrearDenunciaPage from "./pages/Denuncia/crear";
+import DenunciaExitosaPage from "./pages/Denuncia/denuncia-exitosa";
 import ComunidadesPage from "./pages/Comunidad";
-import PerfilPage from "./pages/perfil";
+import PerfilPage from "./pages/perfil/index";
 import LoginPage from "./pages/login";
 import SoportePage from "@/pages/soporte";
 import IndexPage from "./pages/Landing";
 import MetricsFullPage from "./pages/Map";
 import VerificarIdentidadPage from "./pages/verificar-identidad";
-import DenunciaExitosaPage from "./pages/denuncia-exitosa";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import AliadosPage from "./pages/Aliados";
+// import CrearDenunciaPage from "./pages/Denuncia/crear"; // Para cuando la tengas lista
 
 function App() {
   return (
@@ -34,11 +38,11 @@ function App() {
       <Route element={<TerminosPage />} path="/terminos" />
       <Route element={<ContactoPage />} path="/contacto" />
       <Route element={<ComunidadesPage />} path="/comunidades" />
+      <Route element={<AliadosPage />} path="/aliados" />
       <Route element={<TutorialPage />} path="/tutorial" />
       <Route element={<AyudaPage />} path="/ayuda" />
       <Route element={<SoportePage />} path="/soporte" />
       <Route element={<LoginPage />} path="/login" />
-      {/* NUEVA: Ruta de verificación de identidad */}
       <Route element={<VerificarIdentidadPage />} path="/verificar-identidad" />
 
       {/* Rutas de Denuncia - PROTEGIDAS (requieren verificación) */}
@@ -74,14 +78,28 @@ function App() {
         }
         path="/denunciar/audio"
       />
+      <Route
+        element={
+          <ProtectedRoute requireVerification={true}>
+            <SubirPage />
+          </ProtectedRoute>
+        }
+        path="/denunciar/subir"
+      />
+      <Route
+        element={
+          <ProtectedRoute requireVerification={true}>
+            <CrearDenunciaPage />
+          </ProtectedRoute>
+        }
+        path="/denunciar/crear"
+      />
 
-
-      {/* Protegidas (por ahora públicas, luego las envolvemos con ProtectedRoute) */}
+      {/* Protegidas */}
       <Route element={<PerfilPage />} path="/perfil" />
 
-
-      {/* NUEVA: Página de éxito después de crear denuncia */}
-      <Route element={<DenunciaExitosaPage />} path="/denuncia-exitosa" />
+      {/* Página de éxito */}
+      <Route element={<DenunciaExitosaPage />} path="/denunciar/denuncia-exitosa" />
     </Routes>
   );
 }

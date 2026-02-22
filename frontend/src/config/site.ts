@@ -70,3 +70,18 @@ export const siteConfig = {
     address: "Bolivia", // Opcional
   },
 };
+
+// src/config/site.ts (agregar esta constante)
+export const LANDING_ROUTES = [
+  '/',
+  '/como-funciona',
+  '/sobre-nosotros',
+  '/privacidad',
+  '/terminos',
+  '/contacto',
+  '/tutorial',
+  '/ayuda',
+  '/soporte',
+  '/login',
+  '/verificar-identidad',
+];
