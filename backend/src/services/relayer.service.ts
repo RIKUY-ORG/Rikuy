@@ -68,8 +68,8 @@ export class BlockchainRelayerService {
   private rikuyCore!: ethers.Contract;
   private initialized = false;
 
-  private readonly MIN_BALANCE = ethers.parseEther('0.01');
-  private readonly CRITICAL_BALANCE = ethers.parseEther('0.001');
+  private readonly MIN_BALANCE = ethers.parseEther('0.00005');
+  private readonly CRITICAL_BALANCE = ethers.parseEther('0.00001');
 
   constructor() {
     // Lazy init — no crashear en startup si blockchain no está disponible

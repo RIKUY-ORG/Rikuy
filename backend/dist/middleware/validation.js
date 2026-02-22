@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.schemas = exports.validate = void 0;
 const zod_1 = require("zod");
 /**
- * Middleware de validación con Zod
+ * Middleware de validacion con Zod
  */
 const validate = (schema) => {
     return async (req, res, next) => {
@@ -15,7 +15,7 @@ const validate = (schema) => {
             if (error instanceof zod_1.z.ZodError) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Datos inválidos',
+                    error: 'Datos invalidos',
                     details: error.errors,
                 });
             }
@@ -24,26 +24,30 @@ const validate = (schema) => {
     };
 };
 exports.validate = validate;
-// Schemas de validación
+// Schemas de validacion
 exports.schemas = {
+    // Crear reporte anonimo — campos legales Ley 974
     createReport: zod_1.z.object({
         category: zod_1.z.number().int().min(0).max(4),
-        description: zod_1.z.string().max(500).optional(),
+        description: zod_1.z.string().max(500).optional(), // backward-compat (usa detailedDescription si existe)
+        // Campos legales Ley 974 (Art. 18-24)
+        accusedEntity: zod_1.z.string().min(1).max(200), // Identificacion del denunciado
+        incidentDate: zod_1.z.string().min(1).max(30), // Cuando ocurrieron los hechos
+        detailedDescription: zod_1.z.string().min(50).max(2000), // Relacion de hechos detallada
+        evidenceDescription: zod_1.z.string().max(500).optional(), // Que muestra la prueba adjunta
+        citizenSignature: zod_1.z.string().regex(/^0x[a-fA-F0-9]+$/).optional(), // Firma EIP-712 (opcional)
         location: zod_1.z.object({
-            lat: zod_1.z.number().min(-55).max(-21),
-            long: zod_1.z.number().min(-73.5).max(-53),
+            lat: zod_1.z.number().min(-23).max(-9.5), // Bolivia bounds
+            long: zod_1.z.number().min(-69.7).max(-57.4), // Bolivia bounds
             accuracy: zod_1.z.number().positive(),
         }),
-        zkProof: zod_1.z.object({
-            proof: zod_1.z.array(zod_1.z.string()).length(8),
-            publicSignals: zod_1.z.array(zod_1.z.string()).length(4),
-        }),
-        userSecret: zod_1.z.string().optional(),
     }),
+    // Validar reporte (votacion comunitaria)
     validateReport: zod_1.z.object({
         reportId: zod_1.z.string().min(1),
         isValid: zod_1.z.boolean(),
     }),
+    // Buscar reportes cercanos
     nearbyReports: zod_1.z.object({
         lat: zod_1.z.number().min(-90).max(90),
         long: zod_1.z.number().min(-180).max(180),
@@ -51,17 +55,15 @@ exports.schemas = {
         category: zod_1.z.number().int().min(0).max(4).optional(),
         limit: zod_1.z.number().int().positive().max(100).optional(),
     }),
-    verifyIdentity: zod_1.z.object({
-        documentType: zod_1.z.enum(['CI', 'PASSPORT']),
-        documentNumber: zod_1.z.string().min(7).max(15),
-        expedition: zod_1.z.string().length(2).optional(),
-        firstName: zod_1.z.string().min(2).max(50),
-        lastName: zod_1.z.string().min(2).max(50),
-        dateOfBirth: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-        userAddress: zod_1.z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(),
+    // Verificar ciudadania (post Reclaim — Ciudadania Digital devuelve 'usuario' y 'rol')
+    verifyCitizen: zod_1.z.object({
+        usuario: zod_1.z.string().min(1).max(100), // Usuario de Ciudadania Digital Bolivia
+        walletAddress: zod_1.z.string().regex(/^0x[a-fA-F0-9]{40}$/).optional(), // Puede venir del header
+        reclaimProof: zod_1.z.any().optional(), // Proof de Reclaim Protocol
     }),
+    // Revocar identidad
     revokeIdentity: zod_1.z.object({
-        identityCommitment: zod_1.z.string().regex(/^0x[a-fA-F0-9]{64}$/),
+        commitment: zod_1.z.string().regex(/^0x[a-fA-F0-9]{64}$/),
         reason: zod_1.z.string().min(10).max(500),
     }),
 };

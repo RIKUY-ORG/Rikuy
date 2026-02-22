@@ -96,6 +96,14 @@ contract RikuyCoreV2 is UUPSUpgradeable, AccessControlUpgradeable, PausableUpgra
     }
 
     /**
+     * @notice Update the AnonymousReport contract address
+     */
+    function setAnonymousReport(address _anonymousReport) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(_anonymousReport != address(0), "Invalid address");
+        anonymousReport = IAnonymousReport(_anonymousReport);
+    }
+
+    /**
      * @notice Pause the contract operations
      */
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {

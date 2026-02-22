@@ -2,16 +2,19 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const report_service_1 = require("../services/report.service");
+const identity_service_1 = require("../services/identity.service");
 const upload_1 = require("../middleware/upload");
 const validation_1 = require("../middleware/validation");
+const config_1 = require("../config");
 const router = (0, express_1.Router)();
 /**
  * POST /api/reports
- * Crear nuevo reporte (ENDPOINT PRINCIPAL)
+ * Crear nuevo reporte anonimo
+ *
+ * El walletAddress viene del header x-user-address (set by Privy)
+ * No se requiere zkProof — la anonimidad se maneja con commitments
  */
-router.post('/', 
-// reportRateLimiter, // DESACTIVADO temporalmente - requiere Redis
-upload_1.upload.single('photo'), async (req, res) => {
+router.post('/', upload_1.upload.single('photo'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({
@@ -22,18 +25,47 @@ upload_1.upload.single('photo'), async (req, res) => {
         const body = {
             category: parseInt(req.body.category),
             description: req.body.description,
+            // Campos legales Ley 974
+            accusedEntity: req.body.accusedEntity,
+            incidentDate: req.body.incidentDate,
+            detailedDescription: req.body.detailedDescription,
+            evidenceDescription: req.body.evidenceDescription,
+            citizenSignature: req.body.citizenSignature,
             location: JSON.parse(req.body.location),
-            zkProof: JSON.parse(req.body.zkProof),
-            userSecret: req.body.userSecret,
         };
         await validation_1.schemas.createReport.parseAsync(body);
+        // walletAddress desde header de Privy (embedded wallet)
+        const walletAddress = req.headers['x-user-address'] || undefined;
+        // ── Verificar ciudadanía boliviana (Reclaim Protocol) ──
+        // Solo ciudadanos verificados pueden crear reportes (Ley 974)
+        if (!config_1.config.devMode) {
+            if (!walletAddress) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Wallet address requerido. Conecta tu wallet primero.',
+                });
+            }
+            const identity = await identity_service_1.identityService.getIdentityStatus(walletAddress);
+            if (!identity.data.canCreateReports) {
+                return res.status(403).json({
+                    success: false,
+                    error: 'Debes verificar tu ciudadanía boliviana antes de crear reportes.',
+                    verificacionUrl: '/verificar-identidad',
+                });
+            }
+        }
         const request = {
             photo: req.file,
             category: body.category,
             description: body.description,
+            // Campos legales Ley 974
+            accusedEntity: body.accusedEntity,
+            incidentDate: body.incidentDate,
+            detailedDescription: body.detailedDescription,
+            evidenceDescription: body.evidenceDescription,
+            citizenSignature: body.citizenSignature,
             location: body.location,
-            zkProof: body.zkProof,
-            userSecret: body.userSecret,
+            walletAddress,
         };
         const result = await report_service_1.reportService.createReport(request);
         res.json(result);
@@ -71,7 +103,7 @@ router.get('/nearby', async (req, res) => {
         console.error('[API] Nearby reports error:', error);
         res.status(400).json({
             success: false,
-            error: 'No pudimos buscar reportes cercanos. Verifica tu ubicación e intenta de nuevo.',
+            error: 'No pudimos buscar reportes cercanos. Verifica tu ubicacion e intenta de nuevo.',
         });
     }
 });
@@ -101,7 +133,4 @@ router.get('/:id', async (req, res) => {
         });
     }
 });
-// TODO: Implementar endpoint de validación con relayer service si es necesario
-// El sistema de validación se manejará a través del contrato inteligente
-// cuando se implemente la funcionalidad de votación de reportes
 exports.default = router;

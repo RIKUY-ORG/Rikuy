@@ -182,12 +182,22 @@ Rikuy runs on a dedicated VPS with 24/7 uptime:
 | **Backend API** | `http://77.42.69.104:3001` | Running (systemd service) |
 | **Frontend** | [rikuyapp.com](https://rikuyapp.com) | Deployed |
 
-Chain ID: **313370** | Nitro Node: **v3.9.5**
+Chain ID: **313370** | Nitro Node: **v3.9.3**
+
+### Deployed Contracts (Rikuy Chain L3 — Chain ID 313370)
+
+| Contract | Address | Type |
+| :--- | :--- | :--- |
+| **RikuyCoreV2** (Proxy) | `0x61FC4578863DA32DC4e879F59e1cb673dA498618` | UUPS Proxy (Solidity) |
+| **ReportRegistry** (Proxy) | `0x1b8E378f489021029b4e9049F261B204Def16974` | UUPS Proxy (Solidity) |
+| **GovernmentRegistry** | `0x098FF07f87C1AAec0dD5b16c2F0199aA2b60bB75` | Solidity |
+| **AnonymousReport** | `0x219284CFEE97741AEd3E3A7d193c1c1F360a780D` | Solidity (IAnonymousReport) |
 
 ---
 
 ## Documentation & Resources
 
+- **[Strategic Roadmap](./docs/ROADMAP.md)** — Phased go-to-market plan aligned with Bolivia's 2026 elections
 - **[Business Model (PDF)](https://drive.google.com/file/d/15qj4aNVQLQ-gmvLMBlShCQp_MtKOij5b/view?usp=sharing)** — Sustainability and go-to-market strategy
 - **[One-Pager for Users (PDF)](https://drive.google.com/file/d/1Jf4-pC_qPYkQlGBYohBxpfnUHj4rCeMB/view?usp=sharing)** — High-level citizen experience overview
 - **[Policy Brief](./docs/policy_brief.md)** — Document aimed at political candidates for modernizing transparency
@@ -237,32 +247,63 @@ rikuy/
 
 ## Roadmap
 
-- [x] Core smart contract architecture (Solidity + Stylus)
-- [x] ZK citizenship verification via Reclaim Protocol
+Rikuy's go-to-market strategy is timed around Bolivia's **subnational elections (March 22, 2026)**, creating a unique window where both citizens and political candidates demand transparency infrastructure.
+
+| Phase | Timeline | Objective | Key Milestone |
+| :--- | :--- | :--- | :--- |
+| **Phase 1 — Community Launch** | March 2026 | Build brand awareness and citizen user base before elections | 200 verified citizens, 50K ad impressions |
+| **Phase 2 — Institutional Engagement** | March - April 2026 | Convert government contacts into pilot agreements | 1 signed Enterprise pilot (3-month free trial) |
+| **Phase 3 — First Revenue** | May - July 2026 | Validate product-market fit with paying B2B customers | $500 MRR across RIKUY Connect + Insights |
+| **Phase 4 — Scaling** | Aug - Dec 2026 | Expand to 7 cities, launch mobile app, apply for grants | $2,000 MRR, 1,000 verified citizens |
+| **Phase 5 — Regional Expansion** | 2027 | Financial sustainability and expansion to Peru/Mexico | $5,000 MRR, 5,000+ citizens |
+
+### Completed (Technical Foundation)
+
+- [x] Arbitrum Orbit L3 AppChain deployed and operational (Chain ID 313370)
+- [x] Cross-language smart contract architecture (Solidity + Rust/Stylus)
+- [x] ZK citizenship verification via Reclaim Protocol (Ciudadania Digital)
 - [x] Gasless UX with Privy embedded wallets and backend Relayer
-- [x] AI-powered evidence validation (Gemini Vision)
-- [x] IPFS storage for immutable evidence
-- [x] Community validation (upvote/downvote with auto-verification threshold)
+- [x] AI-powered evidence validation (Google Gemini Vision)
+- [x] Immutable evidence storage on IPFS (Pinata)
+- [x] Community validation system (upvote/downvote with auto-verification threshold)
 - [x] Government resolution workflow
-- [x] 24/7 L3 node and backend infrastructure
-- [x] Comprehensive test suite (73 tests)
-- [ ] Governance DAO for report resolution
-- [ ] Pilot deployment in Bolivia
+- [x] 24/7 L3 node and backend infrastructure on dedicated VPS
+- [x] Comprehensive test suite (73 tests with fuzz testing)
+
+### In Progress
+
+- [ ] $200 targeted social media campaign (Instagram, TikTok, Facebook) across 4 key cities
+- [ ] Pilot deployment with municipal/gubernatorial candidates in Bolivia
+- [ ] Governance DAO for decentralized report resolution
+- [ ] Mobile application (React Native)
+
+> Full strategic roadmap with revenue projections, grant strategy, and risk analysis: **[docs/ROADMAP.md](./docs/ROADMAP.md)**
 
 ---
 
 ## Real-World Adoption
 
-Rikuy is not just a technical prototype — it is actively being evaluated for deployment. The team is currently in conversations with **Bolivian government officials and candidates running for mayoral and gubernatorial offices** in the 2026 national elections who are interested in implementing Rikuy as a transparency tool within their administrations.
+Rikuy is not a prototype — it is a **live platform with active institutional interest**. The team is in direct conversations with **gubernatorial and mayoral candidates** running in Bolivia's upcoming subnational elections (March 22, 2026) who seek to implement Rikuy as a transparency tool within their administrations.
 
-Active discussions are underway with gubernatorial and municipal candidates in:
+Active discussions are underway in:
 
-- **Santa Cruz de la Sierra**
-- **La Paz**
-- **Sucre**
-- **Tarija**
+- **Santa Cruz de la Sierra** — Gubernatorial and municipal candidates
+- **La Paz** — Municipal candidates
+- **Sucre** — Gubernatorial candidates
+- **Tarija** — Municipal candidates
 
-These conversations validate Rikuy's thesis: there is real institutional demand for anonymous, tamper-proof civic reporting infrastructure in Bolivia.
+The timing is strategic: candidates actively seek differentiation tools that demonstrate commitment to anti-corruption. Rikuy offers them **real-time territorial intelligence** on citizen complaints, backed by verifiable blockchain data.
+
+### Business Model
+
+Rikuy operates as a **B2B SaaS platform** with two revenue products:
+
+| Product | Description | Pricing |
+| :--- | :--- | :--- |
+| **RIKUY Connect** | Marketplace where lawyers, journalists, and NGOs publish case interest. Citizens choose who to engage. | $15 - $80/mo |
+| **RIKUY Insights** | Data intelligence platform with heat maps, territorial analytics, and exportable reports. | $49 - $800+/mo |
+
+> Full pricing structure and Business Model Canvas: **[Business Model (PDF)](https://drive.google.com/file/d/15qj4aNVQLQ-gmvLMBlShCQp_MtKOij5b/view?usp=sharing)**
 
 ---
 
