@@ -1,6 +1,5 @@
 import { Route, Routes } from "react-router-dom";
 
-// import IndexPage from "@/pages/index";
 import AboutPage from "@/pages/about";
 import PrivacidadPage from "./pages/privacidad";
 import TerminosPage from "./pages/terminos";
@@ -8,6 +7,7 @@ import ContactoPage from "@/pages/contacto";
 import TutorialPage from "@/pages/tutorial";
 import AyudaPage from "@/pages/ayuda";
 import ComoFuncionaPage from "./pages/comoFunciona";
+import DenunciasPage from "./pages/Denuncia/verDenuncias";
 import DenunciarPage from "./pages/Denuncia";
 import PhotoPage from "./pages/Denuncia/foto";
 import VideoPage from "./pages/Denuncia/video";
@@ -24,7 +24,7 @@ import MetricsFullPage from "./pages/Map";
 import VerificarIdentidadPage from "./pages/verificar-identidad";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AliadosPage from "./pages/Aliados";
-// import CrearDenunciaPage from "./pages/Denuncia/crear"; // Para cuando la tengas lista
+import DenunciaDetallePage from "./pages/Denuncia/detalleDenuncia";
 
 function App() {
   return (
@@ -45,7 +45,28 @@ function App() {
       <Route element={<LoginPage />} path="/login" />
       <Route element={<VerificarIdentidadPage />} path="/verificar-identidad" />
 
-      {/* Rutas de Denuncia - PROTEGIDAS (requieren verificación) */}
+      {/* ===== RUTAS DE DENUNCIAS - TODAS PROTEGIDAS ===== */}
+      {/* Listado de denuncias */}
+      <Route
+        element={
+          <ProtectedRoute requireVerification={true}>
+            <DenunciasPage />
+          </ProtectedRoute>
+        }
+        path="/denuncias"
+      />
+      
+      {/* Detalle de denuncia - DEBE IR DESPUÉS DE /denuncias */}
+      <Route
+        element={
+          <ProtectedRoute requireVerification={true}>
+            <DenunciaDetallePage />
+          </ProtectedRoute>
+        }
+        path="/denuncias/:id"
+      />
+
+      {/* Rutas de creación de denuncia */}
       <Route
         element={
           <ProtectedRoute requireVerification={true}>
@@ -95,11 +116,25 @@ function App() {
         path="/denunciar/crear"
       />
 
-      {/* Protegidas */}
-      <Route element={<PerfilPage />} path="/perfil" />
-
       {/* Página de éxito */}
-      <Route element={<DenunciaExitosaPage />} path="/denunciar/denuncia-exitosa" />
+      <Route
+        element={
+          <ProtectedRoute requireVerification={true}>
+            <DenunciaExitosaPage />
+          </ProtectedRoute>
+        }
+        path="/denunciar/denuncia-exitosa"
+      />
+
+      {/* Perfil - también protegido */}
+      <Route
+        element={
+          <ProtectedRoute requireVerification={true}>
+            <PerfilPage />
+          </ProtectedRoute>
+        }
+        path="/perfil"
+      />
     </Routes>
   );
 }

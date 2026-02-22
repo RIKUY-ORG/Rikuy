@@ -16,7 +16,7 @@ export function FloatingNavbar({ isDesktop }: FloatingNavbarProps) {
   const itemRefs = useRef<(HTMLAnchorElement | null)[]>([]);
 
   const navItems = [
-    { to: "/", icon: Home, label: "Inicio" },
+    { to: "/denuncias", icon: Home, label: "Inicio" },
     { to: "/denunciar", icon: FileText, label: "Denunciar" },
     { to: "/aliados", icon: Users, label: "Aliados" },
     { to: "/mapa", icon: Map, label: "Mapa" },
