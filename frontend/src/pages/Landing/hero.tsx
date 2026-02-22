@@ -1,7 +1,7 @@
 // src/pages/landing/Hero.tsx
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Link } from "@heroui/link";
+import { Link } from "react-router-dom";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { Badge } from "@heroui/badge";
@@ -166,7 +166,7 @@ export function Hero({ config }: { config: HeroConfig }) {
           <div className="w-full sm:w-1/2 text-center">
             <Button
               as={Link}
-              href={config.secondaryCta?.href || "/profesionales"}
+              to={config.secondaryCta?.href || "/profesionales"}
               variant="bordered"
               radius="full"
               size="lg"

@@ -5,7 +5,7 @@ import { Card, CardBody } from "@heroui/card";
 import { Chip } from "@heroui/chip";
 import { Divider } from "@heroui/divider";
 import { Button } from "@heroui/button";
-import { Link } from "@heroui/link";
+import { Link } from "react-router-dom";
 import { MapPin, TrendingUp, Users, FileText, ArrowRight } from "lucide-react";
 
 // Importar avatares
@@ -89,21 +89,21 @@ export function MetricsSummary() {
       label: "Denuncias registradas", 
       value: "120+", 
       icon: FileText,
-      href: "/denuncias",
+      to: "/denuncias",
       color: "primary"
     },
     { 
       label: "Comunidades activas", 
       value: "15", 
       icon: Users,
-      href: "/comunidades",
+      to: "/comunidades",
       color: "secondary"
     },
     { 
       label: "Aliados verificados", 
       value: "5", 
       icon: TrendingUp,
-      href: "/aliados",
+      to: "/aliados",
       color: "success"
     },
   ];
@@ -201,13 +201,12 @@ export function MetricsSummary() {
                 className="w-full"
               >
                 <Link 
-                  href={metric.href} 
+                  to={metric.to} 
                   className="block w-full"
                 >
                   <Card 
                     className="group border border-green-500/10 hover:border-green-500/30 transition-all duration-300 cursor-pointer w-full"
                     shadow="md"
-                    isPressable
                   >
                     <CardBody className="p-6 md:p-8 text-center">
                       {/* Icono decorativo */}
@@ -294,8 +293,8 @@ export function MetricsSummary() {
 
           {/* Botón principal */}
           <Button
-            as="a"
-            href="/mapa"
+            as={Link}
+            to="/mapa"
             color="success"
             size="lg"
             radius="full"
@@ -316,19 +315,19 @@ export function MetricsSummary() {
           className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-16 max-w-3xl mx-auto"
           variants={itemVariants}
         >
-          <Link href="/departamentos" className="text-center group">
+          <Link to="/departamentos" className="text-center group">
             <p className="text-2xl font-bold text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">9</p>
             <p className="text-xs text-default-500">Departamentos</p>
           </Link>
-          <Link href="/disponibilidad" className="text-center group">
+          <Link to="/disponibilidad" className="text-center group">
             <p className="text-2xl font-bold text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">24/7</p>
             <p className="text-xs text-default-500">Disponible</p>
           </Link>
-          <Link href="/anonimato" className="text-center group">
+          <Link to="/anonimato" className="text-center group">
             <p className="text-2xl font-bold text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">100%</p>
             <p className="text-xs text-default-500">Anónimo</p>
           </Link>
-          <Link href="/verificacion" className="text-center group">
+          <Link to="/verificacion" className="text-center group">
             <p className="text-2xl font-bold text-green-600 dark:text-green-400 group-hover:scale-110 transition-transform">✓</p>
             <p className="text-xs text-default-500">Verificado</p>
           </Link>
@@ -340,7 +339,7 @@ export function MetricsSummary() {
           variants={itemVariants}
         >
           <Link
-            href="/aliados"
+            to="/aliados"
             className="inline-flex items-center gap-2 text-sm text-green-600 dark:text-green-400 hover:underline"
           >
             Conoce a nuestros aliados verificados
