@@ -1,258 +1,210 @@
+// src/pages/Denuncia/foto.tsx
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Webcam from "react-webcam";
-import { Camera, RefreshCw, Square, Send, Loader2 } from "lucide-react";
+import { Camera, RefreshCw, ArrowRight } from "lucide-react";
 import { title } from "@/components/primitives";
 import DefaultLayout from "@/layouts/default";
 import { addToast } from "@heroui/toast";
 import { Button } from "@heroui/button";
-import { usePrivy } from "@privy-io/react-auth";
-import { RIKUY_CONFIG, STORAGE_KEYS } from "@/config/rikuy";
+import { Card, CardBody } from "@heroui/card";
 
 const videoConstraints = {
   width: 1280,
   height: 720,
+  facingMode: "environment"
 };
 
 export default function PhotoPage() {
   const navigate = useNavigate();
-  const { user } = usePrivy();
   const webcamRef = useRef<Webcam>(null);
-
   const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState<string>("");
+  const [imageDimensions, setImageDimensions] = useState<{ width: number; height: number } | null>(null);
 
-  const capturePhoto = () => {
+  const capturePhoto = async () => {
     if (webcamRef.current) {
-      const image = webcamRef.current.getScreenshot();
-      if (image) setImageSrc(image);
-      addToast({
-        title: "Foto capturada",
-        description: "Tu foto se guardó correctamente.",
-        color: "success",
-      });
+      const screenshot = webcamRef.current.getScreenshot();
+      if (screenshot) {
+        try {
+          // Obtener dimensiones de la imagen usando Image del DOM
+          const img = document.createElement('img');
+          img.onload = () => {
+            setImageDimensions({
+              width: img.width,
+              height: img.height
+            });
+            URL.revokeObjectURL(img.src); // Limpiar memoria
+          };
+          img.src = screenshot;
+
+          // Convertir base64 a File
+          const blob = await fetch(screenshot).then(r => r.blob());
+          const file = new File([blob], `denuncia-${Date.now()}.jpg`, { type: 'image/jpeg' });
+          
+          setImageSrc(screenshot);
+          setImageFile(file);
+          
+          addToast({
+            title: "Foto capturada",
+            description: "Tu foto se guardó correctamente.",
+            color: "success",
+          });
+        } catch (error) {
+          console.error('Error processing image:', error);
+          addToast({
+            title: "Error",
+            description: "No se pudo procesar la imagen.",
+            color: "danger",
+          });
+        }
+      }
     } else {
       addToast({
         title: "Error",
-        description: "No se pudo capturar la foto.",
+        description: "No se pudo acceder a la cámara.",
         color: "danger",
       });
     }
   };
 
-  const clearPhoto = () => {
-    setImageSrc(null);
-    addToast({
-      title: "Foto eliminada",
-      description: "La foto capturada fue borrada.",
-      color: "warning",
-    });
-  };
-
   const toggleCamera = () => {
-    const newMode = facingMode === "user" ? "environment" : "user";
-    setFacingMode(newMode);
+    setFacingMode(prev => prev === "user" ? "environment" : "user");
     addToast({
       title: "Cámara cambiada",
-      description: newMode === "user"
-        ? "Usando cámara frontal."
-        : "Usando cámara trasera.",
+      description: facingMode === "user" ? "Usando cámara trasera" : "Usando cámara frontal",
       color: "primary",
     });
   };
 
-  const handleSubmit = async () => {
-    if (!imageSrc) {
-      addToast({
-        title: "Error",
-        description: "Primero debes capturar una foto",
-        color: "danger",
-      });
-      return;
-    }
+  const retakePhoto = () => {
+    setImageSrc(null);
+    setImageFile(null);
+    setImageDimensions(null);
+  };
 
-    if (!user?.wallet?.address) {
-      addToast({
-        title: "Error",
-        description: "No se encontró tu wallet",
-        color: "danger",
-      });
-      return;
-    }
+  const continueToForm = () => {
+    if (imageFile) {
+      // Guardar el archivo en sessionStorage para pasarlo al formulario
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        sessionStorage.setItem('pendingPhoto', reader.result as string);
+        sessionStorage.setItem('pendingPhotoName', imageFile.name);
+        sessionStorage.setItem('pendingPhotoType', imageFile.type);
+        
+        // Navegar al formulario con información detallada
+        navigate('/denunciar/crear', { 
+          state: { 
+            mediaType: 'photo',
+            fileName: imageFile.name,
+            fileSize: imageFile.size,
+            fileType: imageFile.type,
+            dimensions: imageDimensions,
+            timestamp: Date.now(),
+            source: 'camera'
+          }
+        });
 
-    // Verificar que el usuario esta verificado
-    const isVerified = localStorage.getItem(STORAGE_KEYS.VERIFIED);
-    if (!isVerified) {
-      addToast({
-        title: "Error",
-        description: "Debes verificar tu identidad antes de denunciar",
-        color: "danger",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      // Paso 1: Obtener ubicación
-      setUploadStatus("Obteniendo tu ubicación...");
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject);
-      });
-
-      const location = {
-        lat: position.coords.latitude,
-        long: position.coords.longitude,
-        accuracy: position.coords.accuracy || 10,
+        addToast({
+          title: "Foto lista",
+          description: "Ahora completa los detalles de tu denuncia",
+          color: "success",
+        });
       };
-
-      // Paso 2: Convertir imagen base64 a blob
-      setUploadStatus("Verificando imagen con IA...");
-      const blob = await fetch(imageSrc).then(r => r.blob());
-
-      // Paso 3: Preparar FormData
-      const formData = new FormData();
-      formData.append('photo', blob, 'denuncia.jpg');
-      formData.append('category', '0');
-      formData.append('description', 'Denuncia anónima');
-      formData.append('location', JSON.stringify(location));
-
-      // Paso 4: Enviar al backend (commitment y nullifier se generan en el backend)
-      setUploadStatus("Subiendo a IPFS, Arkiv y Blockchain...");
-      const response = await fetch(`${RIKUY_CONFIG.BACKEND_API_URL}/api/reports`, {
-        method: 'POST',
-        headers: {
-          'x-user-address': user.wallet.address,
-        },
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        throw new Error(result.error || 'Error al crear la denuncia');
-      }
-
-      addToast({
-        title: "¡Denuncia exitosa!",
-        description: "Tu denuncia fue registrada en blockchain",
-        color: "success",
-      });
-
-      navigate('/denuncia-exitosa', {
-        state: {
-          reportId: result.reportId,
-          txHash: result._internal?.txHash,
-          mensaje: result.mensaje,
-        }
-      });
-
-    } catch (error: any) {
-      console.error('Error al enviar denuncia:', error);
-      addToast({
-        title: "Error",
-        description: error.message || "No se pudo enviar la denuncia. Intenta de nuevo.",
-        color: "danger",
-      });
-    } finally {
-      setIsSubmitting(false);
-      setUploadStatus("");
+      reader.readAsDataURL(imageFile);
     }
   };
 
   return (
     <DefaultLayout>
-      <section className="flex flex-col items-center gap-6 py-12 md:py-20 px-4">
-        <h1 className={title()}>Captura de Foto</h1>
+      <section className="flex flex-col items-center gap-6 py-8 px-4 min-h-screen">
+        <h1 className={title()}>Capturar Foto</h1>
 
-        {isSubmitting && (
-          <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50 gap-4">
-            <Loader2 className="animate-spin text-white" size={64} />
-            <p className="text-white text-xl font-semibold">{uploadStatus}</p>
-            <p className="text-white/70 text-sm">No cierres esta ventana...</p>
-          </div>
-        )}
-
-        <div className="flex flex-col items-center gap-4">
-          {!imageSrc && (
-            <Webcam
-              ref={webcamRef}
-              audio={false}
-              screenshotFormat="image/jpeg"
-              width={720}
-              height={360}
-              videoConstraints={{
-                ...videoConstraints,
-                facingMode,
-              }}
-              className="rounded border"
-            />
-          )}
-
-          {imageSrc && (
-            <img
-              src={imageSrc}
-              alt="captura"
-              className="rounded w-full max-w-md border"
-            />
-          )}
-
-          <div className="flex gap-4">
+        <Card className="w-full max-w-2xl">
+          <CardBody className="p-6">
             {!imageSrc ? (
-              <>
-                <button
-                  onClick={capturePhoto}
-                  className="flex flex-col items-center p-4 hover:bg-default-100 rounded-lg transition"
-                >
-                  <Camera size={32} />
-                  <span className="text-xs mt-1">Capturar</span>
-                </button>
-                <button
-                  onClick={toggleCamera}
-                  className="flex flex-col items-center p-4 hover:bg-default-100 rounded-lg transition"
-                >
-                  <RefreshCw size={28} />
-                  <span className="text-xs mt-1">Cambiar cámara</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={clearPhoto}
-                  className="flex flex-col items-center p-4 hover:bg-default-100 rounded-lg transition"
-                >
-                  <Square size={28} />
-                  <span className="text-xs mt-1">Borrar</span>
-                </button>
-                <Button
-                  onClick={handleSubmit}
-                  color="success"
-                  size="lg"
-                  className="flex items-center gap-2"
-                  disabled={isSubmitting}
-                >
-                  <Send size={20} />
-                  Enviar Denuncia
-                </Button>
-              </>
-            )}
-          </div>
-        </div>
+              // Vista de cámara
+              <div className="space-y-4">
+                <div className="relative rounded-lg overflow-hidden bg-black aspect-video">
+                  <Webcam
+                    ref={webcamRef}
+                    audio={false}
+                    screenshotFormat="image/jpeg"
+                    videoConstraints={{
+                      ...videoConstraints,
+                      facingMode,
+                    }}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
 
-        {imageSrc && !isSubmitting && (
-          <div className="bg-blue-100 dark:bg-blue-900/20 p-4 rounded-lg max-w-md text-center">
-            <p className="text-sm font-semibold mb-2">¿Qué pasará al enviar?</p>
-            <ul className="text-xs text-left space-y-1">
-              <li>✅ IA verificará que la imagen sea apropiada</li>
-              <li>✅ Se subirá a IPFS (Pinata) para acceso rápido</li>
-              <li>✅ Se guardará en Arkiv por 10 años</li>
-              <li>✅ Se registrará en Rikuy Chain (blockchain)</li>
-              <li>✅ Tu identidad permanecerá 100% anónima</li>
-            </ul>
-          </div>
-        )}
+                <div className="flex justify-center gap-4">
+                  <Button
+                    onClick={capturePhoto}
+                    color="primary"
+                    size="lg"
+                    startContent={<Camera size={20} />}
+                    className="font-semibold"
+                  >
+                    Capturar
+                  </Button>
+                  <Button
+                    onClick={toggleCamera}
+                    variant="bordered"
+                    size="lg"
+                    startContent={<RefreshCw size={20} />}
+                  >
+                    Cambiar cámara
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              // Vista previa de la foto
+              <div className="space-y-4">
+                <div className="rounded-lg overflow-hidden bg-black">
+                  <img 
+                    src={imageSrc} 
+                    alt="Vista previa" 
+                    className="w-full object-contain max-h-[400px]"
+                  />
+                </div>
+
+                {/* Información de la imagen */}
+                {imageDimensions && (
+                  <div className="flex justify-center gap-4 text-xs text-default-500">
+                    <span>📏 {imageDimensions.width} x {imageDimensions.height} px</span>
+                    <span>📦 {(imageFile?.size && (imageFile.size / 1024).toFixed(1))} KB</span>
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row justify-center gap-3">
+                  <Button
+                    onClick={retakePhoto}
+                    variant="bordered"
+                    size="lg"
+                  >
+                    Tomar otra
+                  </Button>
+                  <Button
+                    onClick={continueToForm}
+                    color="success"
+                    size="lg"
+                    endContent={<ArrowRight size={20} />}
+                    className="font-semibold"
+                  >
+                    Continuar
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Tips de privacidad */}
+        <div className="text-sm text-default-500 max-w-md text-center">
+          <p>🔒 Tu foto será procesada de forma anónima. Se eliminarán todos los metadatos personales.</p>
+        </div>
       </section>
     </DefaultLayout>
   );
