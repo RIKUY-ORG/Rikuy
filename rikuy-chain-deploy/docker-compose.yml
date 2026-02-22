@@ -16,12 +16,21 @@ services:
   blockscout:
     image: blockscout/blockscout:latest
     container_name: rikuy-blockscout
+    command: bin/blockscout start
     ports:
       - "4000:4000"
     environment:
       - ETHEREUM_JSONRPC_VARIANT=geth
-      - ETHEREUM_JSONRPC_HTTP_URL=http://nitro-node:8547
+      - ETHEREUM_JSONRPC_HTTP_URL=http://nitro-node:8449
       - DATABASE_URL=postgresql://postgres:password@db:5432/blockscout
+      - ECTO_USE_SSL=false
+      - SECRET_KEY_BASE=56NtB3dIJusZbSAMhCxt3xK1sSpN62L9dQSm/bBYPRQGG5JazKAVHkIHIw/q9F4F
+      - PORT=4000
+      - COIN=ETH
+      - COIN_NAME=ETH
+      - SUBNETWORK=Rikuy Chain L3
+      - NETWORK=Rikuy
+      - CHAIN_ID=313370
     depends_on:
       - nitro-node
       - db
