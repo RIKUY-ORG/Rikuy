@@ -1,5 +1,5 @@
 // src/components/denunciarButton.tsx
-import { Link } from "@heroui/link";
+import { Link } from "react-router-dom";
 import { Button } from "@heroui/button";
 import { Tooltip } from "@heroui/tooltip";
 import { button as buttonStyles } from "@heroui/theme";
@@ -52,7 +52,7 @@ export function DenunciarButton({
         <div className={className}>  {/* 👈 CLASE EN EL CONTENEDOR */}
           <Button
             as={Link}
-            href="/verificar-identidad"
+            to="/verificar-identidad"
             className={buttonStyles({
               color: "default",
               radius: "full",
@@ -73,7 +73,7 @@ export function DenunciarButton({
   // Usuario logueado y VERIFICADO
   return (
     <Link
-      href="/denunciar"
+      to="/denunciar"
       className={cn(
         buttonStyles({
           color: "primary",

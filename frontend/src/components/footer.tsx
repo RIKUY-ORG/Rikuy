@@ -1,5 +1,5 @@
 // src/components/footer.tsx
-import { Link } from "@heroui/link";
+import { Link } from "react-router-dom";
 import { 
   FaGithub, 
   FaXTwitter, 
@@ -7,14 +7,12 @@ import {
   FaInstagram, 
   FaTiktok, 
   FaEnvelope,
-  // FaDiscord,
-  // FaLinkedin
 } from "react-icons/fa6";
 import { GoHeartFill } from "react-icons/go";
 import { siteConfig } from "@/config/site";
 import { RikuyLogo } from "@/components/rikuyLogo";
 
-// Array de redes sociales usando siteConfig
+// Array de redes sociales usando siteConfig (TODOS EXTERNOS)
 const socialLinks = [
   { 
     icon: FaXTwitter, 
@@ -54,22 +52,6 @@ const socialLinks = [
   }
 ] as const;
 
-// Redes sociales adicionales (opcional)
-// const extraSocialLinks = [
-//   {
-//     icon: FaDiscord,
-//     href: siteConfig.links.discord,
-//     label: "Discord",
-//     color: "text-default-500 hover:text-indigo-600"
-//   },
-//   {
-//     icon: FaLinkedin,
-//     href: siteConfig.links.linkedin,
-//     label: "LinkedIn",
-//     color: "text-default-500 hover:text-blue-700"
-//   }
-// ];
-
 export const Footer = () => {
   return (
     <footer className="w-full border-t border-default-200 py-6 px-4 text-sm text-default-500">
@@ -79,41 +61,24 @@ export const Footer = () => {
           <RikuyLogo size={100} title="Logo de RIKUY" />
           <span className="font-semibold text-default-600">{siteConfig.name}</span>
           
-          {/* Redes sociales principales */}
+          {/* Redes sociales principales - EXTERNAS */}
           <div className="flex flex-wrap justify-center gap-3 mt-2">
             {socialLinks.map((social) => {
               const Icon = social.icon;
               return (
-                <Link
+                <a
                   key={social.label}
-                  isExternal
                   href={social.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className={`transition-colors duration-200 ${social.color}`}
                   aria-label={social.label}
                 >
                   <Icon className="size-5" />
-                </Link>
+                </a>
               );
             })}
           </div>
-
-          {/* Redes sociales adicionales (opcional, comentar si no se usan) */}
-          {/* <div className="flex flex-wrap justify-center gap-3 mt-1">
-            {extraSocialLinks.map((social) => {
-              const Icon = social.icon;
-              return (
-                <Link
-                  key={social.label}
-                  isExternal
-                  href={social.href}
-                  className={`transition-colors duration-200 ${social.color}`}
-                  aria-label={social.label}
-                >
-                  <Icon className="size-4" />
-                </Link>
-              );
-            })}
-          </div> */}
 
           {/* Copyright - Desktop */}
           <div className="hidden md:block mt-4 text-center text-xs text-default-400">
@@ -121,85 +86,75 @@ export const Footer = () => {
           </div>
         </div>
 
-        {/* Institucional */}
+        {/* Institucional - INTERNOS */}
         <div className="flex flex-col items-center md:items-start gap-2">
           <h3 className="font-semibold text-default-700 mb-2">Institucional</h3>
           {siteConfig.institutional.map((item) => (
             <Link 
               key={item.href} 
-              href={item.href} 
-              color="foreground" 
-              className="hover:text-primary transition-colors"
+              to={item.href} 
+              className="hover:text-primary transition-colors text-default-500"
             >
               {item.label}
             </Link>
           ))}
         </div>
 
-        {/* Ayuda y soporte */}
+        {/* Ayuda y soporte - INTERNOS */}
         <div className="flex flex-col items-center md:items-start gap-2">
           <h3 className="font-semibold text-default-700 mb-2">Ayuda y Soporte</h3>
           {siteConfig.help.map((item) => (
             <Link 
               key={item.href} 
-              href={item.href} 
-              color="foreground" 
-              className="hover:text-primary transition-colors"
+              to={item.href} 
+              className="hover:text-primary transition-colors text-default-500"
             >
               {item.label}
             </Link>
           ))}
         </div>
 
-        {/* Impacto y Comunidad */}
+        {/* Impacto y Comunidad - INTERNOS */}
         <div className="flex flex-col items-center md:items-start gap-2">
           <h3 className="font-semibold text-default-700 mb-2">Impacto</h3>
           {siteConfig.impact.map((item) => (
             <Link 
               key={item.href} 
-              href={item.href} 
-              color="foreground" 
-              className="hover:text-primary transition-colors"
+              to={item.href} 
+              className="hover:text-primary transition-colors text-default-500"
             >
               {item.label}
             </Link>
           ))}
           
-          {/* Sponsor */}
+          {/* Sponsor - EXTERNO */}
           <div className="mt-4 pt-4 border-t border-default-200 w-full">
-            <Link
-              isExternal
+            <a
               href={siteConfig.links.sponsor}
+              target="_blank"
+              rel="noopener noreferrer"
               className="flex items-center gap-2 text-danger hover:text-danger-600 transition-colors"
             >
               <GoHeartFill className="size-4" />
               Patrocinar {siteConfig.name}
-            </Link>
+            </a>
           </div>
         </div>
       </div>
 
-      {/* Powered by RIKUY */}
+      {/* Powered by RIKUY - EXTERNO */}
       <div className="mt-8 flex items-center justify-center">
-        <Link
-          isExternal
-          className="flex items-center gap-1 text-current hover:text-primary transition-colors"
+        <a
           href="https://github.com/RIKUY-ORG?view_as=public"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1 text-current hover:text-primary transition-colors"
           title={`${siteConfig.name} homepage`}
         >
           <span className="text-default-600">Powered by</span>
           <p className="text-primary font-semibold">{siteConfig.name}</p>
-        </Link>
+        </a>
       </div>
-
-      {/* Contacto rápido */}
-      {/* <div className="mt-4 text-center text-xs text-default-400">
-        <p>
-          {siteConfig.contact.email} 
-          {siteConfig.contact.phone && ` · ${siteConfig.contact.phone}`}
-          {siteConfig.contact.address && ` · ${siteConfig.contact.address}`}
-        </p>
-      </div> */}
 
       {/* Copyright - Mobile */}
       <div className="md:hidden mt-6 text-center text-xs text-default-400">
